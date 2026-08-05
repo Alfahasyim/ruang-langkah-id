@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { CategoryIcon } from "@/components/trips/CategoryIcon";
+import { Zoomable } from "@/components/ui/Zoomable";
 import { galleryImageUrl, type GalleryItem } from "@/lib/gallery";
 import { CATEGORY_META, cn } from "@/lib/utils";
 
@@ -13,14 +14,8 @@ export function GalleryTile({
   const meta = CATEGORY_META[item.category];
   const imageUrl = galleryImageUrl(item.image_path);
 
-  return (
-    <figure
-      className={cn(
-        "group relative overflow-hidden rounded-2xl bg-linear-to-br",
-        meta.gradient,
-        className,
-      )}
-    >
+  const content = (
+    <>
       {imageUrl ? (
         <Image
           src={imageUrl}
@@ -38,12 +33,30 @@ export function GalleryTile({
 
       <div className="absolute inset-0 bg-linear-to-t from-forest-950/85 via-forest-950/10 to-transparent" />
 
-      <figcaption className="absolute inset-x-0 bottom-0 p-4">
+      <div className="absolute inset-x-0 bottom-0 p-4">
         <p className="text-sm leading-snug font-semibold text-balance text-sand-50">
           {item.caption}
         </p>
         <p className="mt-1 text-xs text-moss-200">{item.location}</p>
-      </figcaption>
-    </figure>
+      </div>
+    </>
+  );
+
+  return (
+    <div
+      className={cn(
+        "group relative h-full overflow-hidden rounded-2xl bg-linear-to-br",
+        meta.gradient,
+        className,
+      )}
+    >
+      {imageUrl ? (
+        <Zoomable src={imageUrl} alt={item.caption} className="h-full">
+          {content}
+        </Zoomable>
+      ) : (
+        content
+      )}
+    </div>
   );
 }

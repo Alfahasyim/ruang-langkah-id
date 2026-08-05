@@ -115,7 +115,7 @@ Tanpa langkah 3, login akan ditolak meski kata sandinya benar.
 | `/admin`           | Ringkasan statistik dan pendaftaran terbaru                        |
 | `/admin/trip`      | Tambah, ubah, hapus trip — termasuk status draf/dibuka/penuh       |
 | `/admin/artikel`   | Tulis dan kelola artikel panduan, bisa disimpan sebagai draf       |
-| `/admin/galeri`    | Unggah foto ke Supabase Storage, atur urutan, sembunyikan/hapus    |
+| `/admin/galeri`    | Unggah sampai 10 foto sekaligus ke Storage, atur urutan, sembunyikan/hapus |
 | `/admin/tim`       | Kelola profil tim: nama, peran, bio, foto, urutan tampil           |
 | `/admin/pendaftar` | Lihat data peserta & kontak darurat, ubah status pendaftaran       |
 | `/admin/anggota`   | Lihat pendaftar keanggotaan komunitas                              |
@@ -124,6 +124,17 @@ Pada halaman Galeri dan Profil Tim, tombol **Ubah** di tiap kartu membuka form
 penyuntingan langsung di tempat. Foto bersifat opsional — tanpa foto, galeri menampilkan
 gradien bertema kategori dan kartu tim menampilkan inisial berwarna yang dihitung dari
 nama (gelar seperti `dr.` diabaikan, jadi "dr. Bagas Prayoga" menjadi **BP**).
+
+Saat menambah foto baru di `/admin/galeri`, kolom berkas menerima **beberapa file
+sekaligus** (maksimal 10, 4 MB per berkas). Setiap file menjadi satu entri galeri
+tersendiri dengan lokasi/kategori yang sama; keterangannya bisa disesuaikan satu per
+satu lewat tombol Ubah setelah tersimpan. Mengunggah foto pengganti saat mengubah item
+yang sudah ada tetap satu berkas per entri.
+
+Setiap foto di situs — galeri, foto tim, maupun thumbnail di panel admin — bisa diklik
+untuk dibuka sebagai popup ukuran penuh ([`Zoomable`](src/components/ui/Zoomable.tsx)).
+Komponen ini memakai elemen `<dialog>` native, jadi tombol Esc, klik di luar gambar,
+dan penjagaan fokus sudah gratis dari browser tanpa dependensi tambahan.
 
 ### Bagaimana aksesnya dijaga
 
@@ -182,7 +193,7 @@ src/
 │   ├── trips/                      # TripCard, DifficultyMeter, filter, ikon
 │   ├── forms/                      # Field primitives + formulir publik
 │   ├── gallery/                    # GalleryTile
-│   └── ui/                         # Button, Container, SectionHeading, PageHeader
+│   └── ui/                         # Button, Container, SectionHeading, PageHeader, Zoomable
 └── lib/
     ├── auth.ts                     # requireAdmin() — sumber kebenaran otorisasi
     ├── supabase/server.ts          # Client cookie-aware (sesi admin)

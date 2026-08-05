@@ -5,6 +5,7 @@ import { EditDisclosure } from "@/components/admin/EditDisclosure";
 import { GalleryForm } from "@/components/admin/GalleryForm";
 import { CategoryIcon } from "@/components/trips/CategoryIcon";
 import { FormAlert } from "@/components/forms/Fields";
+import { Zoomable } from "@/components/ui/Zoomable";
 import { deleteGalleryItem } from "@/lib/admin/content-actions";
 import { getGalleryRows } from "@/lib/admin/queries";
 import { galleryImageUrl } from "@/lib/gallery";
@@ -14,17 +15,33 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Galeri" };
 
-const MESSAGES: Record<string, { status: "success" | "error"; text: string }> = {
-  tersimpan: { status: "success", text: "Foto galeri berhasil disimpan." },
-  terhapus: { status: "success", text: "Foto galeri berhasil dihapus." },
-};
+function resolveNotice(
+  pesan: string | undefined,
+  jumlah: string | undefined,
+): { status: "success" | "error"; text: string } | undefined {
+  switch (pesan) {
+    case "tersimpan":
+      return { status: "success", text: "Foto galeri berhasil disimpan." };
+    case "tersimpan-banyak":
+      return {
+        status: "success",
+        text: `${jumlah ?? "Beberapa"} foto berhasil ditambahkan ke galeri.`,
+      };
+    case "terhapus":
+      return { status: "success", text: "Foto galeri berhasil dihapus." };
+    default:
+      return undefined;
+  }
+}
 
 export default async function AdminGalleryPage({
   searchParams,
 }: PageProps<"/admin/galeri">) {
   const params = await searchParams;
-  const notice =
-    typeof params.pesan === "string" ? MESSAGES[params.pesan] : undefined;
+  const notice = resolveNotice(
+    typeof params.pesan === "string" ? params.pesan : undefined,
+    typeof params.jumlah === "string" ? params.jumlah : undefined,
+  );
 
   const items = await getGalleryRows();
   const nextSortOrder =
@@ -65,13 +82,15 @@ export default async function AdminGalleryPage({
                       className={`relative h-36 bg-linear-to-br ${meta.gradient}`}
                     >
                       {imageUrl ? (
-                        <Image
-                          src={imageUrl}
-                          alt={item.caption}
-                          fill
-                          sizes="(min-width: 1024px) 20vw, 50vw"
-                          className="object-cover"
-                        />
+                        <Zoomable src={imageUrl} alt={item.caption} className="h-full">
+                          <Image
+                            src={imageUrl}
+                            alt={item.caption}
+                            fill
+                            sizes="(min-width: 1024px) 20vw, 50vw"
+                            className="object-cover"
+                          />
+                        </Zoomable>
                       ) : (
                         <CategoryIcon
                           category={item.category}

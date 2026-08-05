@@ -4,6 +4,7 @@ import { DeleteForm } from "@/components/admin/DeleteForm";
 import { EditDisclosure } from "@/components/admin/EditDisclosure";
 import { TeamForm } from "@/components/admin/TeamForm";
 import { FormAlert } from "@/components/forms/Fields";
+import { Zoomable } from "@/components/ui/Zoomable";
 import { deleteTeamMember } from "@/lib/admin/content-actions";
 import { getTeamRows } from "@/lib/admin/queries";
 import { initialsOf, teamPhotoUrl, TEAM_TONES } from "@/lib/team";
@@ -63,7 +64,11 @@ export default async function AdminTeamPage({
                   >
                     <div className="flex items-start gap-4">
                       {photoUrl ? (
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl">
+                        <Zoomable
+                          src={photoUrl}
+                          alt={member.full_name}
+                          className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl"
+                        >
                           <Image
                             src={photoUrl}
                             alt={member.full_name}
@@ -71,7 +76,7 @@ export default async function AdminTeamPage({
                             sizes="56px"
                             className="object-cover"
                           />
-                        </div>
+                        </Zoomable>
                       ) : (
                         <span
                           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-lg font-semibold text-white ${tone}`}

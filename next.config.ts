@@ -19,9 +19,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Unggahan foto galeri dibatasi 4 MB di server action; beri sedikit
-      // kelonggaran untuk overhead multipart.
-      bodySizeLimit: "5mb",
+      // Galeri menerima sampai 10 foto sekaligus @ maks 4 MB/berkas (lihat
+      // MAX_GALLERY_FILES & MAX_IMAGE_BYTES di lib/admin/content-actions.ts).
+      // Batas di sini harus menampung totalnya, bukan satu berkas saja.
+      bodySizeLimit: "45mb",
     },
   },
 };

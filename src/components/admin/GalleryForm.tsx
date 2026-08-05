@@ -44,6 +44,7 @@ export function GalleryForm({
 }) {
   const [state, formAction] = useActionState(saveGalleryItem, INITIAL_FORM_STATE);
   const errors = state.fieldErrors ?? {};
+  const allowMultiple = !item;
 
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate>
@@ -110,12 +111,14 @@ export function GalleryForm({
       </div>
 
       <Field
-        label="Berkas foto"
+        label={allowMultiple ? "Berkas foto (bisa pilih beberapa)" : "Berkas foto"}
         htmlFor="image"
         hint={
           item?.image_path
             ? "Sudah ada foto. Pilih berkas baru hanya bila ingin menggantinya."
-            : "JPG, PNG, WebP, atau AVIF. Maksimal 4 MB. Kosongkan untuk memakai gradien."
+            : allowMultiple
+              ? "JPG, PNG, WebP, atau AVIF. Maksimal 4 MB per berkas, sampai 10 foto sekaligus. Tiap foto jadi entri galeri sendiri dengan keterangan yang sama — ubah satu-satu setelah tersimpan. Kosongkan untuk memakai gradien."
+              : "JPG, PNG, WebP, atau AVIF. Maksimal 4 MB. Kosongkan untuk memakai gradien."
         }
         error={errors.image}
       >
@@ -123,6 +126,7 @@ export function GalleryForm({
           id="image"
           name="image"
           type="file"
+          multiple={allowMultiple}
           accept="image/jpeg,image/png,image/webp,image/avif"
           className="w-full rounded-xl border border-sand-300 bg-white px-4 py-3 text-sm text-granite-700 file:mr-4 file:rounded-full file:border-0 file:bg-forest-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-sand-50"
         />
