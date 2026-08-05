@@ -19,10 +19,13 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Galeri menerima sampai 10 foto sekaligus @ maks 4 MB/berkas (lihat
-      // MAX_GALLERY_FILES & MAX_IMAGE_BYTES di lib/admin/content-actions.ts).
-      // Batas di sini harus menampung totalnya, bukan satu berkas saja.
-      bodySizeLimit: "45mb",
+      // Foto galeri diunggah langsung dari browser ke Supabase Storage, jadi
+      // server action hanya menerima teks (path). Foto tim masih lewat sini,
+      // maks 4 MB + overhead multipart.
+      //
+      // Catatan: menaikkan angka ini tidak menembus batas 4,5 MB body request
+      // milik serverless function Vercel — itu batas platform, bukan Next.js.
+      bodySizeLimit: "5mb",
     },
   },
 };

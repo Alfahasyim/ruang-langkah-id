@@ -70,7 +70,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
 | `registrations` | Pendaftaran peserta per trip beserta kontak darurat                          |
 | `members`       | Pendaftaran keanggotaan komunitas (halaman Gabung)                           |
 | `articles`      | Artikel panduan & tips                                                       |
-| `gallery`       | Foto galeri, menunjuk ke berkas di bucket Storage `galeri`                   |
+| `gallery`       | Entri galeri (satu momen); fotonya di tabel anak `gallery_photos`            |
+| `gallery_photos`| Foto-foto milik satu entri, menunjuk ke berkas di bucket Storage `galeri`    |
 | `team_members`  | Profil tim di halaman Tentang Kami, foto di bucket Storage `tim`             |
 | `admins`        | Daftar user yang boleh masuk panel admin                                     |
 
@@ -115,7 +116,7 @@ Tanpa langkah 3, login akan ditolak meski kata sandinya benar.
 | `/admin`           | Ringkasan statistik dan pendaftaran terbaru                        |
 | `/admin/trip`      | Tambah, ubah, hapus trip — termasuk status draf/dibuka/penuh       |
 | `/admin/artikel`   | Tulis dan kelola artikel panduan, bisa disimpan sebagai draf       |
-| `/admin/galeri`    | Unggah sampai 10 foto sekaligus ke Storage, atur urutan, sembunyikan/hapus |
+| `/admin/galeri`    | Kelola entri galeri; satu entri bisa memuat sampai 10 foto sebagai slide |
 | `/admin/tim`       | Kelola profil tim: nama, peran, bio, foto, urutan tampil           |
 | `/admin/pendaftar` | Lihat data peserta & kontak darurat, ubah status pendaftaran       |
 | `/admin/anggota`   | Lihat pendaftar keanggotaan komunitas                              |
@@ -125,16 +126,27 @@ penyuntingan langsung di tempat. Foto bersifat opsional — tanpa foto, galeri m
 gradien bertema kategori dan kartu tim menampilkan inisial berwarna yang dihitung dari
 nama (gelar seperti `dr.` diabaikan, jadi "dr. Bagas Prayoga" menjadi **BP**).
 
-Saat menambah foto baru di `/admin/galeri`, kolom berkas menerima **beberapa file
-sekaligus** (maksimal 10, 4 MB per berkas). Setiap file menjadi satu entri galeri
-tersendiri dengan lokasi/kategori yang sama; keterangannya bisa disesuaikan satu per
-satu lewat tombol Ubah setelah tersimpan. Mengunggah foto pengganti saat mengubah item
-yang sudah ada tetap satu berkas per entri.
+### Galeri: satu entri, banyak foto
+
+Satu entri galeri mewakili **satu momen** dan bisa memuat sampai **10 foto** (maks 4 MB
+per berkas) yang tampil sebagai slide di situs. Menambah foto ke entri yang sudah ada
+tidak menimpa foto lama — foto baru ditambahkan ke belakang. Tiap foto juga bisa dihapus
+satuan lewat tombol merah di pojok thumbnail-nya di panel admin.
+
+Foto **diunggah langsung dari browser ke Supabase Storage**, bukan lewat Server Action.
+Ini bukan sekadar optimasi: serverless function di Vercel membatasi body request ke
+**4,5 MB**, dan batas itu milik platform sehingga tidak bisa ditembus dengan menaikkan
+[`serverActions.bodySizeLimit`](next.config.ts). Server Action di sini hanya menerima
+daftar *path* hasil unggahan — berupa teks — lalu mencatatnya ke tabel `gallery_photos`.
+Path yang masuk tetap divalidasi ulang di server (hanya nama berkas datar, tanpa `../`
+atau garis miring), karena nilai yang dikirim dari browser tidak boleh dipercaya.
 
 Setiap foto di situs — galeri, foto tim, maupun thumbnail di panel admin — bisa diklik
-untuk dibuka sebagai popup ukuran penuh ([`Zoomable`](src/components/ui/Zoomable.tsx)).
-Komponen ini memakai elemen `<dialog>` native, jadi tombol Esc, klik di luar gambar,
-dan penjagaan fokus sudah gratis dari browser tanpa dependensi tambahan.
+untuk dibuka sebagai popup ukuran penuh ([`Lightbox`](src/components/ui/Lightbox.tsx)).
+Komponen ini memakai elemen `<dialog>` native, jadi tombol Esc, klik di luar gambar, dan
+penjagaan fokus sudah gratis dari browser tanpa dependensi tambahan. Untuk entri
+bergambar banyak, popup menyediakan tombol maju/mundur, penghitung `2 / 5`, dan navigasi
+lewat tombol panah kiri/kanan.
 
 ### Bagaimana aksesnya dijaga
 
@@ -193,7 +205,7 @@ src/
 │   ├── trips/                      # TripCard, DifficultyMeter, filter, ikon
 │   ├── forms/                      # Field primitives + formulir publik
 │   ├── gallery/                    # GalleryTile
-│   └── ui/                         # Button, Container, SectionHeading, PageHeader, Zoomable
+│   └── ui/                         # Button, Container, SectionHeading, PageHeader, Lightbox
 └── lib/
     ├── auth.ts                     # requireAdmin() — sumber kebenaran otorisasi
     ├── supabase/server.ts          # Client cookie-aware (sesi admin)

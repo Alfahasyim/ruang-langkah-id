@@ -6,7 +6,7 @@ import { GalleryForm } from "@/components/admin/GalleryForm";
 import { CategoryIcon } from "@/components/trips/CategoryIcon";
 import { FormAlert } from "@/components/forms/Fields";
 import { Zoomable } from "@/components/ui/Zoomable";
-import { deleteGalleryItem } from "@/lib/admin/content-actions";
+import { deleteGalleryItem, deleteGalleryPhoto } from "@/lib/admin/content-actions";
 import { getGalleryRows } from "@/lib/admin/queries";
 import { galleryImageUrl } from "@/lib/gallery";
 import { CATEGORY_META } from "@/lib/utils";
@@ -21,14 +21,16 @@ function resolveNotice(
 ): { status: "success" | "error"; text: string } | undefined {
   switch (pesan) {
     case "tersimpan":
-      return { status: "success", text: "Foto galeri berhasil disimpan." };
-    case "tersimpan-banyak":
+      return { status: "success", text: "Entri galeri berhasil disimpan." };
+    case "tersimpan-foto":
       return {
         status: "success",
-        text: `${jumlah ?? "Beberapa"} foto berhasil ditambahkan ke galeri.`,
+        text: `Entri tersimpan dengan ${jumlah ?? "beberapa"} foto baru.`,
       };
     case "terhapus":
-      return { status: "success", text: "Foto galeri berhasil dihapus." };
+      return { status: "success", text: "Entri galeri berhasil dihapus." };
+    case "foto-terhapus":
+      return { status: "success", text: "Foto berhasil dihapus dari entri." };
     default:
       return undefined;
   }
@@ -51,7 +53,7 @@ export default async function AdminGalleryPage({
     <>
       <AdminHeading
         title="Galeri Perjalanan"
-        description="Unggah foto dokumentasi trip. Foto tanpa berkas akan tampil sebagai gradien bertema kategori."
+        description="Satu entri bisa memuat banyak foto yang tampil sebagai slide di situs. Entri tanpa foto tampil sebagai gradien bertema kategori."
       />
 
       {notice && (
@@ -65,12 +67,11 @@ export default async function AdminGalleryPage({
           {items.length === 0 ? (
             <EmptyState
               title="Galeri masih kosong"
-              description="Tambahkan foto pertama lewat formulir di samping."
+              description="Tambahkan entri pertama lewat formulir di samping."
             />
           ) : (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2">
               {items.map((item) => {
-                const imageUrl = galleryImageUrl(item.image_path);
                 const meta = CATEGORY_META[item.category];
 
                 return (
@@ -78,26 +79,55 @@ export default async function AdminGalleryPage({
                     key={item.id}
                     className="overflow-hidden rounded-2xl border border-sand-300 bg-white"
                   >
-                    <div
-                      className={`relative h-36 bg-linear-to-br ${meta.gradient}`}
-                    >
-                      {imageUrl ? (
-                        <Zoomable src={imageUrl} alt={item.caption} className="h-full">
-                          <Image
-                            src={imageUrl}
-                            alt={item.caption}
-                            fill
-                            sizes="(min-width: 1024px) 20vw, 50vw"
-                            className="object-cover"
-                          />
-                        </Zoomable>
-                      ) : (
+                    {item.photos.length === 0 ? (
+                      <div
+                        className={`relative h-36 bg-linear-to-br ${meta.gradient}`}
+                      >
                         <CategoryIcon
                           category={item.category}
                           className="absolute -right-4 -bottom-4 h-28 w-28 text-white/20"
                         />
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-1 bg-sand-100 p-1">
+                        {item.photos.map((photo) => {
+                          const url = galleryImageUrl(photo.image_path);
+                          if (!url) return null;
+
+                          return (
+                            <div key={photo.id} className="group relative aspect-square">
+                              <Zoomable
+                                src={url}
+                                alt={item.caption}
+                                className="h-full w-full overflow-hidden rounded-md"
+                              >
+                                <Image
+                                  src={url}
+                                  alt={item.caption}
+                                  fill
+                                  sizes="120px"
+                                  className="object-cover"
+                                />
+                              </Zoomable>
+
+                              <DeleteForm
+                                action={deleteGalleryPhoto}
+                                confirmMessage={`Hapus satu foto ini dari entri "${item.caption}"?`}
+                                label=""
+                                className="absolute top-1 right-1 z-10 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                              >
+                                <input type="hidden" name="photo_id" value={photo.id} />
+                                <input
+                                  type="hidden"
+                                  name="image_path"
+                                  value={photo.image_path}
+                                />
+                              </DeleteForm>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-2">
@@ -109,25 +139,22 @@ export default async function AdminGalleryPage({
                         </Badge>
                       </div>
                       <p className="mt-1 text-xs text-granite-500">
-                        {item.location} · urutan {item.sort_order}
+                        {item.location} · urutan {item.sort_order} ·{" "}
+                        {item.photos.length} foto
                       </p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-sand-200 pt-3">
                         <DeleteForm
                           action={deleteGalleryItem}
-                          confirmMessage={`Hapus foto "${item.caption}" dari galeri?`}
+                          confirmMessage={`Hapus entri "${item.caption}" beserta ${item.photos.length} fotonya?`}
+                          label="Hapus entri"
                         >
                           <input type="hidden" name="id" value={item.id} />
-                          <input
-                            type="hidden"
-                            name="image_path"
-                            value={item.image_path ?? ""}
-                          />
                         </DeleteForm>
                       </div>
 
                       <div className="mt-2">
-                        <EditDisclosure>
+                        <EditDisclosure label="Ubah / tambah foto">
                           <GalleryForm item={item} />
                         </EditDisclosure>
                       </div>
@@ -140,7 +167,7 @@ export default async function AdminGalleryPage({
         </div>
 
         <Panel className="xl:sticky xl:top-8">
-          <h2 className="mb-5 font-semibold text-forest-950">Tambah foto</h2>
+          <h2 className="mb-5 font-semibold text-forest-950">Tambah entri baru</h2>
           <GalleryForm nextSortOrder={nextSortOrder} />
         </Panel>
       </div>

@@ -7,9 +7,9 @@ export type GalleryRow = {
   caption: string;
   location: string;
   category: "gunung" | "curug" | "hutan";
-  image_path: string | null;
   sort_order: number;
   is_published: boolean;
+  photos: { id: string; image_path: string; sort_order: number }[];
 };
 
 export type TeamMemberRow = {
@@ -125,8 +125,11 @@ export async function getGalleryRows(): Promise<GalleryRow[]> {
   const supabase = await adminClient();
   const { data, error } = await supabase
     .from("gallery")
-    .select("id, caption, location, category, image_path, sort_order, is_published")
-    .order("sort_order", { ascending: true });
+    .select(
+      "id, caption, location, category, sort_order, is_published, photos:gallery_photos(id, image_path, sort_order)",
+    )
+    .order("sort_order", { ascending: true })
+    .order("sort_order", { referencedTable: "gallery_photos", ascending: true });
 
   if (error) {
     console.error("[admin/gallery]", error.message);
