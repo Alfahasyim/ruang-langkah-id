@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
+  Contact,
   Footprints,
   Images,
   LayoutDashboard,
@@ -23,6 +24,7 @@ const NAV = [
   { href: "/admin/trip", label: "Trip", icon: Mountain },
   { href: "/admin/artikel", label: "Artikel", icon: NotebookPen },
   { href: "/admin/galeri", label: "Galeri", icon: Images },
+  { href: "/admin/tim", label: "Profil Tim", icon: Contact },
   { href: "/admin/pendaftar", label: "Pendaftar Trip", icon: ClipboardList },
   { href: "/admin/anggota", label: "Anggota", icon: UsersRound },
 ];

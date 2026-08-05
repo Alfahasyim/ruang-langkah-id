@@ -314,6 +314,99 @@ export async function deleteGalleryItem(formData: FormData) {
 }
 
 // ---------------------------------------------------------------------------
+// Profil tim
+// ---------------------------------------------------------------------------
+
+export async function saveTeamMember(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  await requireAdmin();
+
+  const id = text(formData, "id");
+  const fullName = text(formData, "full_name");
+  const role = text(formData, "role");
+  const bio = text(formData, "bio");
+  const file = formData.get("photo") as File | null;
+
+  const fieldErrors: Record<string, string> = {};
+  if (fullName.length < 3) fieldErrors.full_name = "Nama minimal 3 karakter.";
+  if (!role) fieldErrors.role = "Peran wajib diisi.";
+  if (bio.length < 20) fieldErrors.bio = "Bio minimal 20 karakter.";
+
+  const hasUpload = file instanceof File && file.size > 0;
+  if (hasUpload) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type))
+      fieldErrors.photo = "Format harus JPG, PNG, WebP, atau AVIF.";
+    if (file.size > MAX_IMAGE_BYTES)
+      fieldErrors.photo = "Ukuran berkas maksimal 4 MB.";
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return invalid(fieldErrors);
+
+  const supabase = await createSupabaseSessionClient();
+  let photoPath: string | undefined;
+
+  if (hasUpload) {
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const path = `${slugify(fullName).slice(0, 40)}-${Date.now()}.${extension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("tim")
+      .upload(path, file, { contentType: file.type, upsert: false });
+
+    if (uploadError) {
+      console.error("[admin/teamUpload]", uploadError.message);
+      return {
+        status: "error",
+        message: `Gagal mengunggah foto: ${uploadError.message}`,
+      };
+    }
+    photoPath = path;
+  }
+
+  const payload = {
+    full_name: fullName,
+    role,
+    bio,
+    sort_order: Number(text(formData, "sort_order") || 0),
+    is_published: formData.get("is_published") === "on",
+    ...(photoPath ? { photo_path: photoPath } : {}),
+  };
+
+  const { error } = id
+    ? await supabase.from("team_members").update(payload).eq("id", id)
+    : await supabase.from("team_members").insert(payload);
+
+  if (error) {
+    console.error("[admin/saveTeamMember]", error.message);
+    return { status: "error", message: `Gagal menyimpan: ${error.message}` };
+  }
+
+  revalidatePath("/admin/tim");
+  revalidatePath("/tentang-kami");
+  redirect("/admin/tim?pesan=tersimpan");
+}
+
+export async function deleteTeamMember(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const photoPath = String(formData.get("photo_path") ?? "");
+  if (!id) return;
+
+  const supabase = await createSupabaseSessionClient();
+  await supabase.from("team_members").delete().eq("id", id);
+
+  if (photoPath) {
+    await supabase.storage.from("tim").remove([photoPath]);
+  }
+
+  revalidatePath("/admin/tim");
+  revalidatePath("/tentang-kami");
+  redirect("/admin/tim?pesan=terhapus");
+}
+
+// ---------------------------------------------------------------------------
 // Status pendaftar
 // ---------------------------------------------------------------------------
 

@@ -71,6 +71,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
 | `members`       | Pendaftaran keanggotaan komunitas (halaman Gabung)                           |
 | `articles`      | Artikel panduan & tips                                                       |
 | `gallery`       | Foto galeri, menunjuk ke berkas di bucket Storage `galeri`                   |
+| `team_members`  | Profil tim di halaman Tentang Kami, foto di bucket Storage `tim`             |
 | `admins`        | Daftar user yang boleh masuk panel admin                                     |
 
 Detail penting:
@@ -115,8 +116,14 @@ Tanpa langkah 3, login akan ditolak meski kata sandinya benar.
 | `/admin/trip`      | Tambah, ubah, hapus trip — termasuk status draf/dibuka/penuh       |
 | `/admin/artikel`   | Tulis dan kelola artikel panduan, bisa disimpan sebagai draf       |
 | `/admin/galeri`    | Unggah foto ke Supabase Storage, atur urutan, sembunyikan/hapus    |
+| `/admin/tim`       | Kelola profil tim: nama, peran, bio, foto, urutan tampil           |
 | `/admin/pendaftar` | Lihat data peserta & kontak darurat, ubah status pendaftaran       |
 | `/admin/anggota`   | Lihat pendaftar keanggotaan komunitas                              |
+
+Pada halaman Galeri dan Profil Tim, tombol **Ubah** di tiap kartu membuka form
+penyuntingan langsung di tempat. Foto bersifat opsional — tanpa foto, galeri menampilkan
+gradien bertema kategori dan kartu tim menampilkan inisial berwarna yang dihitung dari
+nama (gelar seperti `dr.` diabaikan, jadi "dr. Bagas Prayoga" menjadi **BP**).
 
 ### Bagaimana aksesnya dijaga
 
@@ -164,10 +171,12 @@ src/
 │           ├── trip/               # list, baru, [id]
 │           ├── artikel/            # list, baru, [id]
 │           ├── galeri/page.tsx
+│           ├── tim/page.tsx
 │           ├── pendaftar/page.tsx
 │           └── anggota/page.tsx
 ├── components/
 │   ├── admin/                      # Sidebar, form CRUD, tabel, tombol hapus
+│   ├── about/                      # TeamCard
 │   ├── layout/                     # Header, Footer, Logo
 │   ├── home/                       # Seksi-seksi homepage
 │   ├── trips/                      # TripCard, DifficultyMeter, filter, ikon
@@ -186,6 +195,7 @@ src/
     │   ├── content-actions.ts      # CRUD trip, artikel, galeri, status pendaftar
     │   └── queries.ts              # Pembacaan data admin
     ├── gallery.ts                  # Query galeri + URL Storage
+    ├── team.ts                     # Query profil tim, inisial, URL foto
     ├── seed-data.ts                # Data contoh untuk mode tanpa Supabase
     ├── site.ts                     # Identitas situs & navigasi
     └── utils.ts                    # Format tanggal/rupiah, meta kategori & level

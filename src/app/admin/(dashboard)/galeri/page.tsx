@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { AdminHeading, Badge, EmptyState, Panel } from "@/components/admin/AdminUI";
 import { DeleteForm } from "@/components/admin/DeleteForm";
+import { EditDisclosure } from "@/components/admin/EditDisclosure";
 import { GalleryForm } from "@/components/admin/GalleryForm";
 import { CategoryIcon } from "@/components/trips/CategoryIcon";
 import { FormAlert } from "@/components/forms/Fields";
@@ -92,7 +93,7 @@ export default async function AdminGalleryPage({
                         {item.location} · urutan {item.sort_order}
                       </p>
 
-                      <div className="mt-3 border-t border-sand-200 pt-3">
+                      <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-sand-200 pt-3">
                         <DeleteForm
                           action={deleteGalleryItem}
                           confirmMessage={`Hapus foto "${item.caption}" dari galeri?`}
@@ -104,6 +105,12 @@ export default async function AdminGalleryPage({
                             value={item.image_path ?? ""}
                           />
                         </DeleteForm>
+                      </div>
+
+                      <div className="mt-2">
+                        <EditDisclosure>
+                          <GalleryForm item={item} />
+                        </EditDisclosure>
                       </div>
                     </div>
                   </article>

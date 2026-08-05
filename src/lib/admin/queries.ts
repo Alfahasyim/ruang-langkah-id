@@ -12,6 +12,16 @@ export type GalleryRow = {
   is_published: boolean;
 };
 
+export type TeamMemberRow = {
+  id: string;
+  full_name: string;
+  role: string;
+  bio: string;
+  photo_path: string | null;
+  sort_order: number;
+  is_published: boolean;
+};
+
 export type RegistrationRow = {
   id: string;
   full_name: string;
@@ -123,6 +133,20 @@ export async function getGalleryRows(): Promise<GalleryRow[]> {
     return [];
   }
   return (data ?? []) as GalleryRow[];
+}
+
+export async function getTeamRows(): Promise<TeamMemberRow[]> {
+  const supabase = await adminClient();
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("id, full_name, role, bio, photo_path, sort_order, is_published")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("[admin/team]", error.message);
+    return [];
+  }
+  return (data ?? []) as TeamMemberRow[];
 }
 
 export async function getRegistrations(): Promise<RegistrationRow[]> {

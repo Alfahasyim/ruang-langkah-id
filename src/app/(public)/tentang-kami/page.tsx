@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { Compass, Eye, Target } from "lucide-react";
+import { TeamCard } from "@/components/about/TeamCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { getTeam } from "@/lib/team";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Tentang Kami",
@@ -47,52 +51,9 @@ const TIMELINE = [
   },
 ];
 
-const TEAM = [
-  {
-    name: "Rama Wijanarko",
-    role: "Ketua Komunitas & Trip Leader",
-    initials: "RW",
-    bio: "Pendaki 14 tahun, sertifikasi Wilderness First Responder. Percaya bahwa keputusan turun lebih berani daripada memaksa naik.",
-    tone: "bg-forest-700",
-  },
-  {
-    name: "Sari Nurhaliza",
-    role: "Koordinator Konservasi",
-    initials: "SN",
-    bio: "Sarjana kehutanan yang menjaga agar setiap trip berdampak baik bagi ekosistem dan ekonomi desa penyangga.",
-    tone: "bg-terracotta-500",
-  },
-  {
-    name: "dr. Bagas Prayoga",
-    role: "Penanggung Jawab Medis",
-    initials: "BP",
-    bio: "Dokter umum sekaligus pendaki. Menyusun protokol medis lapangan dan melatih tim P3K di tiap kelompok.",
-    tone: "bg-gold-500",
-  },
-  {
-    name: "Yoga Pratama",
-    role: "Kepala Navigasi & Logistik",
-    initials: "YP",
-    bio: "Mantan anggota SAR daerah. Memetakan jalur, menyiapkan rencana evakuasi, dan mengajar kelas kompas.",
-    tone: "bg-forest-600",
-  },
-  {
-    name: "Dinda Maharani",
-    role: "Koordinator Anggota Baru",
-    initials: "DM",
-    bio: "Dulu peserta paling lambat di rombongan, kini memastikan tidak ada pemula yang merasa sendirian di jalur.",
-    tone: "bg-moss-500",
-  },
-  {
-    name: "Fajar Ramadhan",
-    role: "Dokumentasi & Media",
-    initials: "FR",
-    bio: "Merekam perjalanan tanpa mengganggu satwa maupun merusak vegetasi demi satu frame yang bagus.",
-    tone: "bg-granite-600",
-  },
-];
+export default async function AboutPage() {
+  const team = await getTeam();
 
-export default function AboutPage() {
   return (
     <>
       <PageHeader
@@ -185,26 +146,8 @@ export default function AboutPage() {
           />
 
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {TEAM.map((person) => (
-              <article
-                key={person.name}
-                className="rounded-3xl border border-sand-200 bg-white p-7"
-              >
-                <span
-                  className={`flex h-14 w-14 items-center justify-center rounded-2xl font-display text-lg font-semibold text-white ${person.tone}`}
-                >
-                  {person.initials}
-                </span>
-                <h3 className="mt-5 text-lg font-semibold text-forest-950">
-                  {person.name}
-                </h3>
-                <p className="mt-1 text-sm font-medium text-terracotta-600">
-                  {person.role}
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-granite-600">
-                  {person.bio}
-                </p>
-              </article>
+            {team.map((member, index) => (
+              <TeamCard key={member.id} member={member} index={index} />
             ))}
           </div>
 

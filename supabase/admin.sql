@@ -1,10 +1,12 @@
 -- ============================================================================
--- Ruang Langkah Indonesia — Admin, Galeri, dan Hak Akses
+-- Ruang Langkah Indonesia — Admin, Konten Terkelola, dan Hak Akses
 -- Jalankan SETELAH schema.sql. Berkas ini menambahkan:
---   1. Tabel gallery (galeri dipindah dari kode ke database)
+--   1. Tabel gallery & team_members (dipindah dari kode ke database)
 --   2. Tabel admins + fungsi is_admin()
 --   3. Policy RLS agar admin boleh menulis, publik tetap hanya membaca
---   4. Bucket Storage untuk foto galeri
+--   4. Bucket Storage untuk foto galeri dan foto tim
+--
+-- Aman dijalankan ulang: semua perintah di sini idempoten.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -22,6 +24,23 @@ create table if not exists public.gallery (
 );
 
 create index if not exists gallery_sort_idx on public.gallery (sort_order, created_at desc);
+
+-- ---------------------------------------------------------------------------
+-- 1b. Tabel team_members — profil tim di halaman Tentang Kami
+-- ---------------------------------------------------------------------------
+create table if not exists public.team_members (
+  id           uuid primary key default gen_random_uuid(),
+  full_name    text not null,
+  role         text not null,
+  bio          text not null,
+  photo_path   text,                 -- path di bucket 'tim'; kosong = tampil inisial
+  sort_order   integer not null default 0,
+  is_published boolean not null default true,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists team_members_sort_idx
+  on public.team_members (sort_order, created_at);
 
 -- ---------------------------------------------------------------------------
 -- 2. Tabel admins + helper is_admin()
@@ -53,6 +72,7 @@ revoke all on function public.is_admin() from public;
 grant execute on function public.is_admin() to authenticated;
 
 alter table public.gallery enable row level security;
+alter table public.team_members enable row level security;
 alter table public.admins enable row level security;
 
 -- Admin boleh melihat barisnya sendiri (dipakai untuk verifikasi sesi)
@@ -73,6 +93,18 @@ create policy "gallery_public_read" on public.gallery
 
 drop policy if exists "gallery_admin_all" on public.gallery;
 create policy "gallery_admin_all" on public.gallery
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- Profil tim: publik membaca yang terbit, admin mengelola penuh
+drop policy if exists "team_public_read" on public.team_members;
+create policy "team_public_read" on public.team_members
+  for select to anon, authenticated
+  using (is_published = true);
+
+drop policy if exists "team_admin_all" on public.team_members;
+create policy "team_admin_all" on public.team_members
   for all to authenticated
   using (public.is_admin())
   with check (public.is_admin());
@@ -126,10 +158,10 @@ create policy "members_admin_delete" on public.members
   using (public.is_admin());
 
 -- ---------------------------------------------------------------------------
--- 4. Storage: bucket foto galeri
+-- 4. Storage: bucket foto galeri dan foto tim
 -- ---------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)
-values ('galeri', 'galeri', true)
+values ('galeri', 'galeri', true), ('tim', 'tim', true)
 on conflict (id) do update set public = true;
 
 drop policy if exists "galeri_public_read" on storage.objects;
@@ -147,8 +179,23 @@ create policy "galeri_admin_delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'galeri' and public.is_admin());
 
+drop policy if exists "tim_public_read" on storage.objects;
+create policy "tim_public_read" on storage.objects
+  for select to anon, authenticated
+  using (bucket_id = 'tim');
+
+drop policy if exists "tim_admin_write" on storage.objects;
+create policy "tim_admin_write" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'tim' and public.is_admin());
+
+drop policy if exists "tim_admin_delete" on storage.objects;
+create policy "tim_admin_delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'tim' and public.is_admin());
+
 -- ---------------------------------------------------------------------------
--- 5. Data contoh galeri (tanpa foto — tampil sebagai gradien sampai diunggah)
+-- 5. Data contoh (tanpa foto — tampil sebagai gradien/inisial sampai diunggah)
 -- ---------------------------------------------------------------------------
 insert into public.gallery (caption, location, category, sort_order) values
   ('Menunggu kabut buyar di Bukit Teletubbies', 'Gunung Prau, Dieng', 'gunung', 1),
@@ -159,6 +206,21 @@ insert into public.gallery (caption, location, category, sort_order) values
   ('Membawa turun 14 kg sampah dari jalur', 'Aksi bersih gunung, Papandayan', 'gunung', 6),
   ('Belajar mengenali jejak satwa bersama ranger', 'Citalahab, Halimun Salak', 'hutan', 7),
   ('Langit merah di tepi Segara Anak', 'Gunung Rinjani, Lombok', 'gunung', 8)
+on conflict do nothing;
+
+insert into public.team_members (full_name, role, bio, sort_order) values
+  ('Rama Wijanarko', 'Ketua Komunitas & Trip Leader',
+   'Pendaki 14 tahun, sertifikasi Wilderness First Responder. Percaya bahwa keputusan turun lebih berani daripada memaksa naik.', 1),
+  ('Sari Nurhaliza', 'Koordinator Konservasi',
+   'Sarjana kehutanan yang menjaga agar setiap trip berdampak baik bagi ekosistem dan ekonomi desa penyangga.', 2),
+  ('dr. Bagas Prayoga', 'Penanggung Jawab Medis',
+   'Dokter umum sekaligus pendaki. Menyusun protokol medis lapangan dan melatih tim P3K di tiap kelompok.', 3),
+  ('Yoga Pratama', 'Kepala Navigasi & Logistik',
+   'Mantan anggota SAR daerah. Memetakan jalur, menyiapkan rencana evakuasi, dan mengajar kelas kompas.', 4),
+  ('Dinda Maharani', 'Koordinator Anggota Baru',
+   'Dulu peserta paling lambat di rombongan, kini memastikan tidak ada pemula yang merasa sendirian di jalur.', 5),
+  ('Fajar Ramadhan', 'Dokumentasi & Media',
+   'Merekam perjalanan tanpa mengganggu satwa maupun merusak vegetasi demi satu frame yang bagus.', 6)
 on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
