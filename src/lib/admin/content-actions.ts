@@ -224,20 +224,29 @@ export async function deleteArticle(formData: FormData) {
 
 const MAX_GALLERY_FILES = 10;
 
-async function uploadGalleryFile(
-  supabase: Awaited<ReturnType<typeof createSupabaseSessionClient>>,
-  file: File,
-  caption: string,
-  suffix: string,
-) {
-  const extension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const path = `${slugify(caption).slice(0, 40)}-${Date.now()}${suffix}.${extension}`;
+/**
+ * Berkas foto TIDAK melewati server action ini. Browser mengunggahnya langsung
+ * ke Supabase Storage lalu mengirim daftar path-nya ke sini, karena body
+ * request ke serverless function Vercel dibatasi 4,5 MB dan batas itu tidak
+ * bisa dinaikkan lewat konfigurasi Next.js.
+ */
+function parseImagePaths(formData: FormData): string[] {
+  const raw = text(formData, "image_paths");
+  if (!raw) return [];
 
-  const { error } = await supabase.storage
-    .from("galeri")
-    .upload(path, file, { contentType: file.type, upsert: false });
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
 
-  return { path, error };
+    return parsed
+      .filter((entry): entry is string => typeof entry === "string")
+      // Path dibuat di browser, jadi tetap divalidasi: hanya nama berkas datar
+      // di dalam bucket, tanpa "../" atau garis miring yang bisa menunjuk keluar.
+      .filter((entry) => /^[a-z0-9][a-z0-9._-]*$/i.test(entry))
+      .slice(0, MAX_GALLERY_FILES);
+  } catch {
+    return [];
+  }
 }
 
 export async function saveGalleryItem(
@@ -251,141 +260,89 @@ export async function saveGalleryItem(
   const location = text(formData, "location");
   const category = text(formData, "category");
   const isPublished = formData.get("is_published") === "on";
-  const baseSortOrder = Number(text(formData, "sort_order") || 0);
-
-  // Input file memakai `multiple` hanya saat menambah item baru; saat
-  // mengubah item lama, browser tetap boleh mengirim beberapa berkas kalau
-  // markup-nya diubah manual, jadi kita batasi ke berkas pertama saja di sana.
-  const uploadedFiles = (formData.getAll("image") as File[]).filter(
-    (file) => file instanceof File && file.size > 0,
-  );
-  const files = id ? uploadedFiles.slice(0, 1) : uploadedFiles;
+  const sortOrder = Number(text(formData, "sort_order") || 0);
+  const imagePaths = parseImagePaths(formData);
 
   const fieldErrors: Record<string, string> = {};
   if (caption.length < 5) fieldErrors.caption = "Keterangan minimal 5 karakter.";
   if (!location) fieldErrors.location = "Lokasi wajib diisi.";
   if (!CATEGORIES.includes(category)) fieldErrors.category = "Pilih kategori.";
 
-  if (files.length > MAX_GALLERY_FILES) {
-    fieldErrors.image = `Maksimal ${MAX_GALLERY_FILES} foto sekaligus.`;
-  } else {
-    for (const file of files) {
-      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-        fieldErrors.image = "Format harus JPG, PNG, WebP, atau AVIF.";
-        break;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        fieldErrors.image = "Setiap berkas maksimal 4 MB.";
-        break;
-      }
-    }
-  }
-
   if (Object.keys(fieldErrors).length > 0) return invalid(fieldErrors);
 
   const supabase = await createSupabaseSessionClient();
 
-  // Mengubah item lama: satu baris, foto opsional menggantikan yang lama.
-  if (id) {
-    let imagePath: string | undefined;
+  const entryPayload = {
+    caption,
+    location,
+    category,
+    sort_order: sortOrder,
+    is_published: isPublished,
+  };
 
-    if (files[0]) {
-      const { path, error: uploadError } = await uploadGalleryFile(
-        supabase,
-        files[0],
-        caption,
-        "",
-      );
-      if (uploadError) {
-        console.error("[admin/galleryUpload]", uploadError.message);
-        return {
-          status: "error",
-          message: `Gagal mengunggah foto: ${uploadError.message}`,
-        };
-      }
-      imagePath = path;
-    }
+  let entryId = id;
 
+  if (entryId) {
     const { error } = await supabase
       .from("gallery")
-      .update({
-        caption,
-        location,
-        category,
-        sort_order: baseSortOrder,
-        is_published: isPublished,
-        ...(imagePath ? { image_path: imagePath } : {}),
-      })
-      .eq("id", id);
+      .update(entryPayload)
+      .eq("id", entryId);
 
     if (error) {
       console.error("[admin/saveGallery]", error.message);
       return { status: "error", message: `Gagal menyimpan: ${error.message}` };
     }
+  } else {
+    const { data, error } = await supabase
+      .from("gallery")
+      .insert(entryPayload)
+      .select("id")
+      .single();
 
-    revalidatePath("/admin/galeri");
-    revalidatePath("/galeri");
-    revalidatePath("/");
-    redirect("/admin/galeri?pesan=tersimpan");
-  }
-
-  // Item baru: 0 berkas → satu baris tanpa foto (tampil gradien), 1+ berkas
-  // → satu baris per foto, berbagi keterangan/lokasi/kategori yang sama dan
-  // bisa diubah satu-satu lewat tombol Ubah setelah tersimpan.
-  const entryCount = Math.max(files.length, 1);
-  const rows: {
-    caption: string;
-    location: string;
-    category: string;
-    sort_order: number;
-    is_published: boolean;
-    image_path?: string;
-  }[] = [];
-
-  for (let index = 0; index < entryCount; index += 1) {
-    const file = files[index];
-    let imagePath: string | undefined;
-
-    if (file) {
-      const { path, error: uploadError } = await uploadGalleryFile(
-        supabase,
-        file,
-        caption,
-        entryCount > 1 ? `-${index + 1}` : "",
-      );
-      if (uploadError) {
-        console.error("[admin/galleryUpload]", uploadError.message);
-        return {
-          status: "error",
-          message: `Gagal mengunggah ${file.name}: ${uploadError.message}`,
-        };
-      }
-      imagePath = path;
+    if (error || !data) {
+      console.error("[admin/saveGallery]", error?.message);
+      return {
+        status: "error",
+        message: `Gagal menyimpan: ${error?.message ?? "entri tidak terbuat"}`,
+      };
     }
-
-    rows.push({
-      caption: entryCount > 1 ? `${caption} (${index + 1})` : caption,
-      location,
-      category,
-      sort_order: baseSortOrder + index,
-      is_published: isPublished,
-      ...(imagePath ? { image_path: imagePath } : {}),
-    });
+    entryId = data.id;
   }
 
-  const { error } = await supabase.from("gallery").insert(rows);
+  // Foto baru ditambahkan ke entri, tidak menggantikan yang sudah ada.
+  if (imagePaths.length > 0) {
+    const { data: existing } = await supabase
+      .from("gallery_photos")
+      .select("sort_order")
+      .eq("gallery_id", entryId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
 
-  if (error) {
-    console.error("[admin/saveGallery]", error.message);
-    return { status: "error", message: `Gagal menyimpan: ${error.message}` };
+    const startOrder = (existing?.[0]?.sort_order ?? -1) + 1;
+
+    const { error } = await supabase.from("gallery_photos").insert(
+      imagePaths.map((path, index) => ({
+        gallery_id: entryId,
+        image_path: path,
+        sort_order: startOrder + index,
+      })),
+    );
+
+    if (error) {
+      console.error("[admin/saveGalleryPhotos]", error.message);
+      return {
+        status: "error",
+        message: `Entri tersimpan tapi foto gagal dicatat: ${error.message}`,
+      };
+    }
   }
 
   revalidatePath("/admin/galeri");
   revalidatePath("/galeri");
   revalidatePath("/");
   redirect(
-    entryCount > 1
-      ? `/admin/galeri?pesan=tersimpan-banyak&jumlah=${entryCount}`
+    imagePaths.length > 1
+      ? `/admin/galeri?pesan=tersimpan-foto&jumlah=${imagePaths.length}`
       : "/admin/galeri?pesan=tersimpan",
   );
 }
@@ -393,11 +350,38 @@ export async function saveGalleryItem(
 export async function deleteGalleryItem(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
-  const imagePath = String(formData.get("image_path") ?? "");
   if (!id) return;
 
   const supabase = await createSupabaseSessionClient();
+
+  // Ambil path fotonya dulu supaya berkas di Storage ikut dibersihkan;
+  // baris gallery_photos sendiri terhapus otomatis lewat on delete cascade.
+  const { data: photos } = await supabase
+    .from("gallery_photos")
+    .select("image_path")
+    .eq("gallery_id", id);
+
   await supabase.from("gallery").delete().eq("id", id);
+
+  const paths = (photos ?? []).map((photo) => photo.image_path);
+  if (paths.length > 0) {
+    await supabase.storage.from("galeri").remove(paths);
+  }
+
+  revalidatePath("/admin/galeri");
+  revalidatePath("/galeri");
+  revalidatePath("/");
+  redirect("/admin/galeri?pesan=terhapus");
+}
+
+export async function deleteGalleryPhoto(formData: FormData) {
+  await requireAdmin();
+  const photoId = String(formData.get("photo_id") ?? "");
+  const imagePath = String(formData.get("image_path") ?? "");
+  if (!photoId) return;
+
+  const supabase = await createSupabaseSessionClient();
+  await supabase.from("gallery_photos").delete().eq("id", photoId);
 
   if (imagePath) {
     await supabase.storage.from("galeri").remove([imagePath]);
@@ -406,7 +390,7 @@ export async function deleteGalleryItem(formData: FormData) {
   revalidatePath("/admin/galeri");
   revalidatePath("/galeri");
   revalidatePath("/");
-  redirect("/admin/galeri?pesan=terhapus");
+  redirect("/admin/galeri?pesan=foto-terhapus");
 }
 
 // ---------------------------------------------------------------------------

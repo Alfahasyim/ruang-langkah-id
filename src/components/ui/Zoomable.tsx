@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
-import { X, ZoomIn } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ZoomIn } from "lucide-react";
+import { Lightbox } from "@/components/ui/Lightbox";
 import { cn } from "@/lib/utils";
 
 /**
- * Bungkus thumbnail apa pun (biasanya <Image>) agar bisa diklik untuk
- * membuka versi penuhnya di popup. Memakai <dialog> native: gratis dari
- * penjaga fokus, tombol Esc, dan lapisan ::backdrop tanpa dependensi luar.
+ * Bungkus satu thumbnail agar bisa diklik untuk membuka versi penuhnya.
+ * Untuk kumpulan foto dengan slide, pakai PhotoSlider.
  */
 export function Zoomable({
   src,
@@ -20,13 +20,13 @@ export function Zoomable({
   children: ReactNode;
   className?: string;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
         type="button"
-        onClick={() => dialogRef.current?.showModal()}
+        onClick={() => setOpen(true)}
         aria-label={`Perbesar foto: ${alt}`}
         className={cn("group relative block cursor-zoom-in text-left", className)}
       >
@@ -36,32 +36,13 @@ export function Zoomable({
         </span>
       </button>
 
-      <dialog
-        ref={dialogRef}
-        onClick={(event) => {
-          if (event.target === dialogRef.current) dialogRef.current?.close();
-        }}
-        onCancel={() => dialogRef.current?.close()}
-        className="m-auto max-h-[88vh] max-w-[92vw] rounded-2xl border-0 bg-transparent p-0 backdrop:bg-forest-950/85"
-        aria-label={alt}
-      >
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element -- ukuran asli tidak diketahui, lebih sederhana daripada memaksa next/image di dalam dialog */}
-          <img
-            src={src}
-            alt={alt}
-            className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain"
-          />
-          <button
-            type="button"
-            onClick={() => dialogRef.current?.close()}
-            aria-label="Tutup"
-            className="absolute -top-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full bg-forest-950 text-sand-50 shadow-lg transition-colors hover:bg-forest-800"
-          >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
-      </dialog>
+      <Lightbox
+        photos={[{ src, alt }]}
+        index={0}
+        open={open}
+        onClose={() => setOpen(false)}
+        onNavigate={() => {}}
+      />
     </>
   );
 }
