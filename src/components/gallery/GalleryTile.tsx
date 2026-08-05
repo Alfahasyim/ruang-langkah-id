@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { CategoryIcon } from "@/components/trips/CategoryIcon";
-import type { GalleryItem } from "@/lib/gallery";
+import { galleryImageUrl, type GalleryItem } from "@/lib/gallery";
 import { CATEGORY_META, cn } from "@/lib/utils";
 
 export function GalleryTile({
@@ -11,6 +11,7 @@ export function GalleryTile({
   className?: string;
 }) {
   const meta = CATEGORY_META[item.category];
+  const imageUrl = galleryImageUrl(item.image_path);
 
   return (
     <figure
@@ -20,9 +21,9 @@ export function GalleryTile({
         className,
       )}
     >
-      {item.src ? (
+      {imageUrl ? (
         <Image
-          src={item.src}
+          src={imageUrl}
           alt={item.caption}
           fill
           sizes="(min-width: 1024px) 33vw, 100vw"

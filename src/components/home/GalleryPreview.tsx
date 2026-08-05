@@ -3,10 +3,12 @@ import { GalleryTile } from "@/components/gallery/GalleryTile";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { GALLERY } from "@/lib/gallery";
+import { getGallery } from "@/lib/gallery";
 
-export function GalleryPreview() {
-  const items = GALLERY.slice(0, 5);
+export async function GalleryPreview() {
+  const items = (await getGallery()).slice(0, 5);
+
+  if (items.length < 5) return null;
 
   return (
     <section className="bg-sand-50 py-20 sm:py-24">

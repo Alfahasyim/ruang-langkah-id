@@ -3,7 +3,9 @@ import { Camera } from "lucide-react";
 import { GalleryTile } from "@/components/gallery/GalleryTile";
 import { Container } from "@/components/ui/Container";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { GALLERY } from "@/lib/gallery";
+import { getGallery } from "@/lib/gallery";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Galeri Perjalanan",
@@ -11,7 +13,9 @@ export const metadata: Metadata = {
     "Dokumentasi perjalanan Ruang Langkah Indonesia di gunung, curug, dan hutan Nusantara.",
 };
 
-export default function GaleriPage() {
+export default async function GaleriPage() {
+  const gallery = await getGallery();
+
   return (
     <>
       <PageHeader
@@ -23,7 +27,7 @@ export default function GaleriPage() {
       <section className="bg-sand-50 py-16 sm:py-20">
         <Container>
           <div className="grid auto-rows-[220px] grid-cols-2 gap-4 lg:grid-cols-4">
-            {GALLERY.map((item, index) => (
+            {gallery.map((item, index) => (
               <GalleryTile
                 key={item.id}
                 item={item}

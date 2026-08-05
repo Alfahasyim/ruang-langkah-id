@@ -37,9 +37,12 @@ npx eslint .
 
 **a. Buat proyek** di https://supabase.com → New project.
 
-**b. Jalankan skema database.** Buka Dashboard → SQL Editor → New query, tempel seluruh isi
-[`supabase/schema.sql`](supabase/schema.sql), lalu Run. Ulangi dengan
-[`supabase/seed.sql`](supabase/seed.sql) untuk mengisi data contoh.
+**b. Jalankan skema database.** Buka Dashboard → SQL Editor → New query, lalu jalankan
+tiga berkas ini **berurutan**:
+
+1. [`supabase/schema.sql`](supabase/schema.sql) — tabel inti, RLS, dan RPC
+2. [`supabase/admin.sql`](supabase/admin.sql) — galeri, hak akses admin, bucket Storage
+3. [`supabase/seed.sql`](supabase/seed.sql) — data contoh (opsional)
 
 **c. Isi kredensial.** Ambil URL dan anon key di Dashboard → Project Settings → Data API.
 
@@ -67,6 +70,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
 | `registrations` | Pendaftaran peserta per trip beserta kontak darurat                          |
 | `members`       | Pendaftaran keanggotaan komunitas (halaman Gabung)                           |
 | `articles`      | Artikel panduan & tips                                                       |
+| `gallery`       | Foto galeri, menunjuk ke berkas di bucket Storage `galeri`                   |
+| `admins`        | Daftar user yang boleh masuk panel admin                                     |
 
 Detail penting:
 
@@ -81,38 +86,112 @@ Detail penting:
 
 ---
 
-## 3. Struktur proyek
+## 3. Panel admin
+
+Panel admin ada di **`/admin`** dan dipakai untuk mengelola isi situs tanpa menyentuh kode.
+
+### Membuat akun admin
+
+Tidak ada halaman pendaftaran admin — akun sengaja hanya bisa dibuat dari dashboard,
+supaya tidak ada orang luar yang bisa mendaftarkan diri.
+
+1. Dashboard → **Authentication → Users → Add user**. Isi email & kata sandi, centang
+   **Auto Confirm User**.
+2. Salin **User UID**-nya.
+3. Dashboard → SQL Editor, jalankan:
+
+```sql
+insert into public.admins (user_id, full_name)
+values ('PASTE-USER-UID-DI-SINI', 'Nama Anda');
+```
+
+Tanpa langkah 3, login akan ditolak meski kata sandinya benar.
+
+### Yang bisa dikelola
+
+| Halaman            | Kemampuan                                                          |
+| ------------------ | ------------------------------------------------------------------ |
+| `/admin`           | Ringkasan statistik dan pendaftaran terbaru                        |
+| `/admin/trip`      | Tambah, ubah, hapus trip — termasuk status draf/dibuka/penuh       |
+| `/admin/artikel`   | Tulis dan kelola artikel panduan, bisa disimpan sebagai draf       |
+| `/admin/galeri`    | Unggah foto ke Supabase Storage, atur urutan, sembunyikan/hapus    |
+| `/admin/pendaftar` | Lihat data peserta & kontak darurat, ubah status pendaftaran       |
+| `/admin/anggota`   | Lihat pendaftar keanggotaan komunitas                              |
+
+### Bagaimana aksesnya dijaga
+
+Ada tiga lapis, dan lapis terluar sengaja **bukan** yang diandalkan:
+
+1. **`src/proxy.ts`** — menyegarkan token dan menendang pengunjung tanpa sesi lebih awal.
+   Ini hanya pengecekan optimistik terhadap cookie, bukan batas keamanan.
+2. **`requireAdmin()` di [`src/lib/auth.ts`](src/lib/auth.ts)** — memverifikasi token ke
+   server Supabase lewat `getUser()` (bukan `getSession()` yang cuma baca cookie) lalu
+   memastikan user terdaftar di tabel `admins`. Dipanggil di setiap halaman admin, setiap
+   fungsi query admin, dan setiap Server Action.
+3. **Row Level Security** — bahkan bila kode aplikasi lolos, database sendiri menolak
+   operasi tulis dari user yang `is_admin()`-nya `false`.
+
+> Yang perlu diingat: kunci yang dipakai situs ini adalah **anon key**, yang memang aman
+> terekspos ke browser. Yang menjaga data bukan kerahasiaan kunci itu, melainkan RLS.
+> Jangan pernah menaruh service role key di variabel berawalan `NEXT_PUBLIC_`.
+
+---
+
+## 4. Struktur proyek
+
+Situs publik dan panel admin dipisah lewat route group, jadi keduanya punya kerangka
+halaman sendiri tanpa mengubah URL.
 
 ```
 src/
+├── proxy.ts                        # Penyegaran token + cek optimistik /admin
 ├── app/
-│   ├── layout.tsx              # Root layout: font, metadata, Header, Footer
-│   ├── page.tsx                # Homepage
-│   ├── tentang-kami/page.tsx   # Cerita, visi & misi, profil tim
-│   ├── trip/page.tsx           # Katalog open trip + filter kategori & level
-│   ├── trip/[slug]/page.tsx    # Detail trip + formulir pendaftaran
-│   ├── panduan/page.tsx        # Artikel edukasi + checklist keselamatan
-│   ├── galeri/page.tsx         # Galeri perjalanan
-│   ├── gabung/page.tsx         # Syarat, keuntungan, formulir anggota
-│   └── not-found.tsx
+│   ├── layout.tsx                  # Root: html, font, metadata global
+│   ├── (public)/                   # ← situs publik, memakai Header & Footer
+│   │   ├── layout.tsx
+│   │   ├── page.tsx                # Homepage
+│   │   ├── tentang-kami/page.tsx
+│   │   ├── trip/page.tsx           # Katalog + filter kategori & level
+│   │   ├── trip/[slug]/page.tsx    # Detail trip + formulir pendaftaran
+│   │   ├── panduan/page.tsx
+│   │   ├── galeri/page.tsx
+│   │   └── gabung/page.tsx
+│   └── admin/                      # ← panel admin
+│       ├── login/page.tsx
+│       └── (dashboard)/            # semua halaman di sini wajib lolos requireAdmin()
+│           ├── layout.tsx          # Sidebar + penjaga sesi
+│           ├── page.tsx            # Dasbor
+│           ├── trip/               # list, baru, [id]
+│           ├── artikel/            # list, baru, [id]
+│           ├── galeri/page.tsx
+│           ├── pendaftar/page.tsx
+│           └── anggota/page.tsx
 ├── components/
-│   ├── layout/                 # Header, Footer, Logo
-│   ├── home/                   # Seksi-seksi homepage
-│   ├── trips/                  # TripCard, DifficultyMeter, filter, ikon kategori
-│   ├── forms/                  # Field primitives + dua formulir
-│   ├── gallery/                # GalleryTile
-│   └── ui/                     # Button, Container, SectionHeading, PageHeader
+│   ├── admin/                      # Sidebar, form CRUD, tabel, tombol hapus
+│   ├── layout/                     # Header, Footer, Logo
+│   ├── home/                       # Seksi-seksi homepage
+│   ├── trips/                      # TripCard, DifficultyMeter, filter, ikon
+│   ├── forms/                      # Field primitives + formulir publik
+│   ├── gallery/                    # GalleryTile
+│   └── ui/                         # Button, Container, SectionHeading, PageHeader
 └── lib/
-    ├── supabaseClient.ts       # Client browser + flag isSupabaseConfigured
-    ├── supabaseServer.ts       # Client server
-    ├── queries.ts              # Pembacaan data (fallback ke data contoh)
-    ├── actions.ts              # Server Actions: daftar trip & gabung anggota
-    ├── seed-data.ts            # Data contoh untuk mode tanpa Supabase
-    ├── site.ts                 # Identitas situs & navigasi
-    └── utils.ts                # Format tanggal/rupiah, meta kategori & level
+    ├── auth.ts                     # requireAdmin() — sumber kebenaran otorisasi
+    ├── supabase/server.ts          # Client cookie-aware (sesi admin)
+    ├── supabaseClient.ts           # Client browser + flag isSupabaseConfigured
+    ├── supabaseServer.ts           # Client anonim untuk data publik
+    ├── queries.ts                  # Pembacaan publik (fallback ke data contoh)
+    ├── actions.ts                  # Server Actions publik: daftar trip & anggota
+    ├── admin/
+    │   ├── auth-actions.ts         # Masuk & keluar
+    │   ├── content-actions.ts      # CRUD trip, artikel, galeri, status pendaftar
+    │   └── queries.ts              # Pembacaan data admin
+    ├── gallery.ts                  # Query galeri + URL Storage
+    ├── seed-data.ts                # Data contoh untuk mode tanpa Supabase
+    ├── site.ts                     # Identitas situs & navigasi
+    └── utils.ts                    # Format tanggal/rupiah, meta kategori & level
 ```
 
-## 4. Identitas visual
+## 5. Identitas visual
 
 Palet dan token didefinisikan di `src/app/globals.css` melalui `@theme` (Tailwind v4 —
 tidak ada `tailwind.config.js`).
@@ -134,7 +213,7 @@ Tipografi: **Fraunces** untuk judul, **Plus Jakarta Sans** untuk teks isi.
 
 ---
 
-## 5. Git & GitHub
+## 6. Git & GitHub
 
 Repositori ini sudah terhubung ke `origin`. Alur kerja harian:
 
