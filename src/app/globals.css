@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  /* Forest — warna utama, diambil dari kanopi hutan hujan tropis */
+  --color-forest-50: #f1f7f3;
+  --color-forest-100: #ddebe2;
+  --color-forest-200: #bcd8c7;
+  --color-forest-300: #92bda5;
+  --color-forest-400: #649c80;
+  --color-forest-500: #447f63;
+  --color-forest-600: #32654e;
+  --color-forest-700: #295140;
+  --color-forest-800: #224134;
+  --color-forest-900: #1d372c;
+  --color-forest-950: #0e1f18;
+
+  /* Moss — hijau lumut untuk aksen lembut */
+  --color-moss-100: #eaf0d9;
+  --color-moss-200: #d6e2b6;
+  --color-moss-300: #bacd8b;
+  --color-moss-400: #9db564;
+  --color-moss-500: #829c48;
+
+  /* Terracotta — tanah merah jalur pendakian */
+  --color-terracotta-50: #fdf5f2;
+  --color-terracotta-100: #fae7df;
+  --color-terracotta-200: #f4cdbd;
+  --color-terracotta-300: #eaa88e;
+  --color-terracotta-400: #dd7d5c;
+  --color-terracotta-500: #cf5f3c;
+  --color-terracotta-600: #b8482c;
+  --color-terracotta-700: #993826;
+  --color-terracotta-800: #7d3124;
+  --color-terracotta-900: #682c22;
+
+  /* Muted gold — cahaya matahari terbit di puncak */
+  --color-gold-100: #faf1d8;
+  --color-gold-200: #f3e0ac;
+  --color-gold-300: #e8c877;
+  --color-gold-400: #d9ad4c;
+  --color-gold-500: #c19332;
+  --color-gold-600: #9c7327;
+
+  /* Granite — abu batuan gunung */
+  --color-granite-50: #f6f6f5;
+  --color-granite-100: #e8e8e6;
+  --color-granite-200: #d2d2ce;
+  --color-granite-300: #b0b0aa;
+  --color-granite-400: #8a8a83;
+  --color-granite-500: #6e6e68;
+  --color-granite-600: #585853;
+  --color-granite-700: #484844;
+  --color-granite-800: #3c3c39;
+  --color-granite-900: #343431;
+
+  /* Sand — kanvas hangat pengganti putih steril */
+  --color-sand-50: #fbf9f5;
+  --color-sand-100: #f6f2ea;
+  --color-sand-200: #ece5d6;
+  --color-sand-300: #ded2ba;
+
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), ui-serif, Georgia, serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-sand-50);
+    color: var(--color-forest-950);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: var(--color-moss-200);
+    color: var(--color-forest-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-forest-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@utility topo-pattern {
+  background-image: radial-gradient(
+      circle at 20% 30%,
+      color-mix(in srgb, var(--color-forest-300) 22%, transparent) 0,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 80% 70%,
+      color-mix(in srgb, var(--color-gold-300) 18%, transparent) 0,
+      transparent 40%
+    );
+}
