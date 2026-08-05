@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Zoomable } from "@/components/ui/Zoomable";
 import { initialsOf, teamPhotoUrl, TEAM_TONES, type TeamMember } from "@/lib/team";
 
 export function TeamCard({
@@ -14,7 +15,11 @@ export function TeamCard({
   return (
     <article className="rounded-3xl border border-sand-200 bg-white p-7">
       {photoUrl ? (
-        <div className="relative h-14 w-14 overflow-hidden rounded-2xl">
+        <Zoomable
+          src={photoUrl}
+          alt={member.full_name}
+          className="h-14 w-14 overflow-hidden rounded-2xl"
+        >
           <Image
             src={photoUrl}
             alt={member.full_name}
@@ -22,7 +27,7 @@ export function TeamCard({
             sizes="56px"
             className="object-cover"
           />
-        </div>
+        </Zoomable>
       ) : (
         <span
           className={`flex h-14 w-14 items-center justify-center rounded-2xl font-display text-lg font-semibold text-white ${tone}`}

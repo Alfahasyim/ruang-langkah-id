@@ -222,6 +222,24 @@ export async function deleteArticle(formData: FormData) {
 // Galeri
 // ---------------------------------------------------------------------------
 
+const MAX_GALLERY_FILES = 10;
+
+async function uploadGalleryFile(
+  supabase: Awaited<ReturnType<typeof createSupabaseSessionClient>>,
+  file: File,
+  caption: string,
+  suffix: string,
+) {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+  const path = `${slugify(caption).slice(0, 40)}-${Date.now()}${suffix}.${extension}`;
+
+  const { error } = await supabase.storage
+    .from("galeri")
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  return { path, error };
+}
+
 export async function saveGalleryItem(
   _prev: FormState,
   formData: FormData,
@@ -232,56 +250,130 @@ export async function saveGalleryItem(
   const caption = text(formData, "caption");
   const location = text(formData, "location");
   const category = text(formData, "category");
-  const file = formData.get("image") as File | null;
+  const isPublished = formData.get("is_published") === "on";
+  const baseSortOrder = Number(text(formData, "sort_order") || 0);
+
+  // Input file memakai `multiple` hanya saat menambah item baru; saat
+  // mengubah item lama, browser tetap boleh mengirim beberapa berkas kalau
+  // markup-nya diubah manual, jadi kita batasi ke berkas pertama saja di sana.
+  const uploadedFiles = (formData.getAll("image") as File[]).filter(
+    (file) => file instanceof File && file.size > 0,
+  );
+  const files = id ? uploadedFiles.slice(0, 1) : uploadedFiles;
 
   const fieldErrors: Record<string, string> = {};
   if (caption.length < 5) fieldErrors.caption = "Keterangan minimal 5 karakter.";
   if (!location) fieldErrors.location = "Lokasi wajib diisi.";
   if (!CATEGORIES.includes(category)) fieldErrors.category = "Pilih kategori.";
 
-  const hasUpload = file instanceof File && file.size > 0;
-  if (hasUpload) {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type))
-      fieldErrors.image = "Format harus JPG, PNG, WebP, atau AVIF.";
-    if (file.size > MAX_IMAGE_BYTES)
-      fieldErrors.image = "Ukuran berkas maksimal 4 MB.";
+  if (files.length > MAX_GALLERY_FILES) {
+    fieldErrors.image = `Maksimal ${MAX_GALLERY_FILES} foto sekaligus.`;
+  } else {
+    for (const file of files) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        fieldErrors.image = "Format harus JPG, PNG, WebP, atau AVIF.";
+        break;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        fieldErrors.image = "Setiap berkas maksimal 4 MB.";
+        break;
+      }
+    }
   }
 
   if (Object.keys(fieldErrors).length > 0) return invalid(fieldErrors);
 
   const supabase = await createSupabaseSessionClient();
-  let imagePath: string | undefined;
 
-  if (hasUpload) {
-    const extension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${slugify(caption).slice(0, 40)}-${Date.now()}.${extension}`;
+  // Mengubah item lama: satu baris, foto opsional menggantikan yang lama.
+  if (id) {
+    let imagePath: string | undefined;
 
-    const { error: uploadError } = await supabase.storage
-      .from("galeri")
-      .upload(path, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      console.error("[admin/galleryUpload]", uploadError.message);
-      return {
-        status: "error",
-        message: `Gagal mengunggah foto: ${uploadError.message}`,
-      };
+    if (files[0]) {
+      const { path, error: uploadError } = await uploadGalleryFile(
+        supabase,
+        files[0],
+        caption,
+        "",
+      );
+      if (uploadError) {
+        console.error("[admin/galleryUpload]", uploadError.message);
+        return {
+          status: "error",
+          message: `Gagal mengunggah foto: ${uploadError.message}`,
+        };
+      }
+      imagePath = path;
     }
-    imagePath = path;
+
+    const { error } = await supabase
+      .from("gallery")
+      .update({
+        caption,
+        location,
+        category,
+        sort_order: baseSortOrder,
+        is_published: isPublished,
+        ...(imagePath ? { image_path: imagePath } : {}),
+      })
+      .eq("id", id);
+
+    if (error) {
+      console.error("[admin/saveGallery]", error.message);
+      return { status: "error", message: `Gagal menyimpan: ${error.message}` };
+    }
+
+    revalidatePath("/admin/galeri");
+    revalidatePath("/galeri");
+    revalidatePath("/");
+    redirect("/admin/galeri?pesan=tersimpan");
   }
 
-  const payload = {
-    caption,
-    location,
-    category,
-    sort_order: Number(text(formData, "sort_order") || 0),
-    is_published: formData.get("is_published") === "on",
-    ...(imagePath ? { image_path: imagePath } : {}),
-  };
+  // Item baru: 0 berkas → satu baris tanpa foto (tampil gradien), 1+ berkas
+  // → satu baris per foto, berbagi keterangan/lokasi/kategori yang sama dan
+  // bisa diubah satu-satu lewat tombol Ubah setelah tersimpan.
+  const entryCount = Math.max(files.length, 1);
+  const rows: {
+    caption: string;
+    location: string;
+    category: string;
+    sort_order: number;
+    is_published: boolean;
+    image_path?: string;
+  }[] = [];
 
-  const { error } = id
-    ? await supabase.from("gallery").update(payload).eq("id", id)
-    : await supabase.from("gallery").insert(payload);
+  for (let index = 0; index < entryCount; index += 1) {
+    const file = files[index];
+    let imagePath: string | undefined;
+
+    if (file) {
+      const { path, error: uploadError } = await uploadGalleryFile(
+        supabase,
+        file,
+        caption,
+        entryCount > 1 ? `-${index + 1}` : "",
+      );
+      if (uploadError) {
+        console.error("[admin/galleryUpload]", uploadError.message);
+        return {
+          status: "error",
+          message: `Gagal mengunggah ${file.name}: ${uploadError.message}`,
+        };
+      }
+      imagePath = path;
+    }
+
+    rows.push({
+      caption: entryCount > 1 ? `${caption} (${index + 1})` : caption,
+      location,
+      category,
+      sort_order: baseSortOrder + index,
+      is_published: isPublished,
+      ...(imagePath ? { image_path: imagePath } : {}),
+    });
+  }
+
+  const { error } = await supabase.from("gallery").insert(rows);
 
   if (error) {
     console.error("[admin/saveGallery]", error.message);
@@ -291,7 +383,11 @@ export async function saveGalleryItem(
   revalidatePath("/admin/galeri");
   revalidatePath("/galeri");
   revalidatePath("/");
-  redirect("/admin/galeri?pesan=tersimpan");
+  redirect(
+    entryCount > 1
+      ? `/admin/galeri?pesan=tersimpan-banyak&jumlah=${entryCount}`
+      : "/admin/galeri?pesan=tersimpan",
+  );
 }
 
 export async function deleteGalleryItem(formData: FormData) {
