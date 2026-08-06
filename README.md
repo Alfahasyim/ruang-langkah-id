@@ -5,6 +5,9 @@ pendakian gunung, eksplorasi curug, dan penjelajahan hutan.
 
 **Tech stack:** Next.js 16 (App Router, TypeScript) · Tailwind CSS v4 · Lucide React · Supabase (PostgreSQL)
 
+> 📐 Untuk pemetaan arsitektur, alur data, integrasi database per berkas, dan analisis
+> lapisan keamanan admin — lihat **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
 ---
 
 ## 1. Menjalankan di komputer lokal
