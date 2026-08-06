@@ -1,5 +1,7 @@
 import Image from "next/image";
+import { SocialIcon } from "@/components/ui/SocialIcon";
 import { Zoomable } from "@/components/ui/Zoomable";
+import { socialLabel } from "@/lib/social";
 import { initialsOf, teamPhotoUrl, TEAM_TONES, type TeamMember } from "@/lib/team";
 
 export function TeamCard({
@@ -40,7 +42,30 @@ export function TeamCard({
         {member.full_name}
       </h3>
       <p className="mt-1 text-sm font-medium text-terracotta-600">{member.role}</p>
-      <p className="mt-3 text-sm leading-relaxed text-granite-600">{member.bio}</p>
+
+      {/* whitespace-pre-line: bio diisi admin dan boleh memuat baris baru */}
+      <p className="mt-3 text-sm leading-relaxed whitespace-pre-line text-granite-600">
+        {member.bio}
+      </p>
+
+      {member.socials.length > 0 && (
+        <ul className="mt-4 flex flex-wrap gap-1.5">
+          {member.socials.map((social) => (
+            <li key={social.id}>
+              <a
+                href={social.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${member.full_name} di ${socialLabel(social)}`}
+                aria-label={`${member.full_name} di ${socialLabel(social)}`}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-sand-100 text-granite-600 transition-colors hover:bg-forest-700 hover:text-sand-50"
+              >
+                <SocialIcon platform={social.platform} className="h-3.5 w-3.5" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </article>
   );
 }

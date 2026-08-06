@@ -114,7 +114,7 @@ export default async function TripDetailPage({
           <h1 className="mt-5 max-w-4xl font-display text-3xl leading-tight font-semibold text-balance sm:text-5xl">
             {trip.title}
           </h1>
-          <p className="mt-5 max-w-2xl leading-relaxed text-pretty text-white/90">
+          <p className="whitespace-pre-line mt-5 max-w-2xl leading-relaxed text-pretty text-white/90">
             {trip.summary}
           </p>
         </Container>
@@ -128,7 +128,7 @@ export default async function TripDetailPage({
                 <h2 className="text-2xl font-semibold text-forest-950">
                   Tentang perjalanan ini
                 </h2>
-                <p className="mt-4 leading-relaxed text-pretty text-granite-700">
+                <p className="whitespace-pre-line mt-4 leading-relaxed text-pretty text-granite-700">
                   {trip.description}
                 </p>
               </div>

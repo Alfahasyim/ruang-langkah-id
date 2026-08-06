@@ -56,7 +56,7 @@ export default async function AdminMembersPage() {
                   ))}
                 </div>
               </td>
-              <td className="max-w-sm px-5 py-4 text-xs leading-relaxed text-granite-600">
+              <td className="whitespace-pre-line max-w-sm px-5 py-4 text-xs leading-relaxed text-granite-600">
                 {member.motivation}
               </td>
             </tr>

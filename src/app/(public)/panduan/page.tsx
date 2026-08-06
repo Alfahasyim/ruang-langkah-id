@@ -127,7 +127,7 @@ export default async function PanduanPage({ searchParams }: PageProps<"/panduan"
                   <h2 className="mt-5 text-lg leading-snug font-semibold text-balance text-forest-950">
                     {article.title}
                   </h2>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-granite-600">
+                  <p className="whitespace-pre-line mt-3 flex-1 text-sm leading-relaxed text-granite-600">
                     {article.excerpt}
                   </p>
 

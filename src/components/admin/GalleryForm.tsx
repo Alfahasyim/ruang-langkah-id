@@ -9,6 +9,7 @@ import {
   FormAlert,
   Input,
   Select,
+  Textarea,
 } from "@/components/forms/Fields";
 import { Button } from "@/components/ui/Button";
 import { saveGalleryItem } from "@/lib/admin/content-actions";
@@ -164,10 +165,17 @@ export function GalleryForm({
         <FormAlert status="error" message={state.message} />
       )}
 
-      <Field label="Keterangan momen" htmlFor={`caption-${item?.id ?? "baru"}`} required error={errors.caption}>
-        <Input
+      <Field
+        label="Keterangan momen"
+        htmlFor={`caption-${item?.id ?? "baru"}`}
+        hint="Boleh lebih dari satu baris — tekan Enter untuk baris baru."
+        required
+        error={errors.caption}
+      >
+        <Textarea
           id={`caption-${item?.id ?? "baru"}`}
           name="caption"
+          rows={2}
           defaultValue={item?.caption}
           placeholder="Menunggu kabut buyar di Bukit Teletubbies"
           required

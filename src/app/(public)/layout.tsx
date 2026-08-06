@@ -1,7 +1,11 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { getSiteSettings, siteAssetUrl } from "@/lib/settings";
 
-export default function PublicLayout({ children }: LayoutProps<"/">) {
+export default async function PublicLayout({ children }: LayoutProps<"/">) {
+  const settings = await getSiteSettings();
+  const logoUrl = siteAssetUrl(settings.logo_path);
+
   return (
     <>
       <a
@@ -10,11 +14,15 @@ export default function PublicLayout({ children }: LayoutProps<"/">) {
       >
         Lompat ke konten utama
       </a>
-      <Header />
+      <Header
+        name={settings.name}
+        shortName={settings.short_name}
+        logoUrl={logoUrl}
+      />
       <main id="konten-utama" className="flex-1">
         {children}
       </main>
-      <Footer />
+      <Footer settings={settings} logoUrl={logoUrl} />
     </>
   );
 }

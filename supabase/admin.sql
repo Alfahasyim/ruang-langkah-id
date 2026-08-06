@@ -208,10 +208,72 @@ create policy "members_admin_delete" on public.members
   using (public.is_admin());
 
 -- ---------------------------------------------------------------------------
--- 4. Storage: bucket foto galeri dan foto tim
+-- 3b. Pengaturan situs & tautan sosial media
+-- ---------------------------------------------------------------------------
+
+-- Baris tunggal: check constraint id = 1 memastikan tabel ini tidak pernah
+-- punya lebih dari satu baris, jadi query cukup .single() tanpa filter.
+create table if not exists public.site_settings (
+  id         smallint primary key default 1,
+  name       text not null default 'Ruang Langkah Indonesia',
+  short_name text not null default 'Ruang Langkah',
+  tagline    text not null default 'Melangkah bersama, pulang dengan cerita — dan tanpa meninggalkan jejak.',
+  email      text,
+  phone      text,
+  address    text,
+  logo_path  text,                  -- path di bucket 'situs'
+  updated_at timestamptz not null default now(),
+  constraint site_settings_singleton check (id = 1)
+);
+
+insert into public.site_settings (id) values (1) on conflict (id) do nothing;
+
+-- Satu tabel untuk dua pemilik: team_member_id NULL berarti tautan milik
+-- situs (footer), terisi berarti milik anggota tim tersebut. Cascade delete
+-- ikut membersihkan tautan saat profil tim dihapus.
+create table if not exists public.social_links (
+  id             uuid primary key default gen_random_uuid(),
+  team_member_id uuid references public.team_members (id) on delete cascade,
+  platform       text not null,
+  label          text,             -- dipakai saat platform = 'lainnya'
+  url            text not null,
+  sort_order     integer not null default 0,
+  created_at     timestamptz not null default now()
+);
+
+create index if not exists social_links_owner_idx
+  on public.social_links (team_member_id, sort_order);
+
+alter table public.site_settings enable row level security;
+alter table public.social_links enable row level security;
+
+drop policy if exists "site_settings_public_read" on public.site_settings;
+create policy "site_settings_public_read" on public.site_settings
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists "site_settings_admin_write" on public.site_settings;
+create policy "site_settings_admin_write" on public.site_settings
+  for update to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "social_links_public_read" on public.social_links;
+create policy "social_links_public_read" on public.social_links
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists "social_links_admin_all" on public.social_links;
+create policy "social_links_admin_all" on public.social_links
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- 4. Storage: bucket foto galeri, foto tim, dan logo situs
 -- ---------------------------------------------------------------------------
 insert into storage.buckets (id, name, public)
-values ('galeri', 'galeri', true), ('tim', 'tim', true)
+values ('galeri', 'galeri', true), ('tim', 'tim', true), ('situs', 'situs', true)
 on conflict (id) do update set public = true;
 
 drop policy if exists "galeri_public_read" on storage.objects;
@@ -243,6 +305,21 @@ drop policy if exists "tim_admin_delete" on storage.objects;
 create policy "tim_admin_delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'tim' and public.is_admin());
+
+drop policy if exists "situs_public_read" on storage.objects;
+create policy "situs_public_read" on storage.objects
+  for select to anon, authenticated
+  using (bucket_id = 'situs');
+
+drop policy if exists "situs_admin_write" on storage.objects;
+create policy "situs_admin_write" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'situs' and public.is_admin());
+
+drop policy if exists "situs_admin_delete" on storage.objects;
+create policy "situs_admin_delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'situs' and public.is_admin());
 
 -- ---------------------------------------------------------------------------
 -- 5. Data contoh (tanpa foto — tampil sebagai gradien/inisial sampai diunggah)

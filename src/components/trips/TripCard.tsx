@@ -60,7 +60,7 @@ export function TripCard({ trip }: { trip: Trip }) {
               {trip.title}
             </Link>
           </h3>
-          <p className="mt-2 text-sm leading-relaxed text-granite-600">
+          <p className="whitespace-pre-line mt-2 text-sm leading-relaxed text-granite-600">
             {trip.summary}
           </p>
         </div>

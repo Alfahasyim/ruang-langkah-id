@@ -4,15 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "../auth";
 import type { FormState } from "../form-state";
+import { parseSocialLinks } from "../social";
 import { createSupabaseSessionClient } from "../supabase/server";
 
 const CATEGORIES = ["gunung", "curug", "hutan"];
 const TRIP_STATUSES = ["draft", "open", "full", "closed", "completed"];
 const ARTICLE_CATEGORIES = ["perlengkapan", "etika", "keselamatan", "navigasi"];
 const REGISTRATION_STATUSES = ["pending", "confirmed", "waitlist", "cancelled"];
-
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -407,43 +405,20 @@ export async function saveTeamMember(
   const fullName = text(formData, "full_name");
   const role = text(formData, "role");
   const bio = text(formData, "bio");
-  const file = formData.get("photo") as File | null;
+  // Foto diunggah langsung dari browser (lihat ImageUploadField); di sini yang
+  // diterima hanya path-nya, jadi tetap disaring agar tidak keluar bucket.
+  const photoPath = text(formData, "photo_path");
 
   const fieldErrors: Record<string, string> = {};
   if (fullName.length < 3) fieldErrors.full_name = "Nama minimal 3 karakter.";
   if (!role) fieldErrors.role = "Peran wajib diisi.";
   if (bio.length < 20) fieldErrors.bio = "Bio minimal 20 karakter.";
-
-  const hasUpload = file instanceof File && file.size > 0;
-  if (hasUpload) {
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type))
-      fieldErrors.photo = "Format harus JPG, PNG, WebP, atau AVIF.";
-    if (file.size > MAX_IMAGE_BYTES)
-      fieldErrors.photo = "Ukuran berkas maksimal 4 MB.";
-  }
+  if (photoPath && !/^[a-z0-9][a-z0-9._-]*$/i.test(photoPath))
+    fieldErrors.photo = "Nama berkas foto tidak valid.";
 
   if (Object.keys(fieldErrors).length > 0) return invalid(fieldErrors);
 
   const supabase = await createSupabaseSessionClient();
-  let photoPath: string | undefined;
-
-  if (hasUpload) {
-    const extension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `${slugify(fullName).slice(0, 40)}-${Date.now()}.${extension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("tim")
-      .upload(path, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      console.error("[admin/teamUpload]", uploadError.message);
-      return {
-        status: "error",
-        message: `Gagal mengunggah foto: ${uploadError.message}`,
-      };
-    }
-    photoPath = path;
-  }
 
   const payload = {
     full_name: fullName,
@@ -454,13 +429,70 @@ export async function saveTeamMember(
     ...(photoPath ? { photo_path: photoPath } : {}),
   };
 
-  const { error } = id
-    ? await supabase.from("team_members").update(payload).eq("id", id)
-    : await supabase.from("team_members").insert(payload);
+  let memberId = id;
 
-  if (error) {
-    console.error("[admin/saveTeamMember]", error.message);
-    return { status: "error", message: `Gagal menyimpan: ${error.message}` };
+  if (memberId) {
+    const { error } = await supabase
+      .from("team_members")
+      .update(payload)
+      .eq("id", memberId);
+
+    if (error) {
+      console.error("[admin/saveTeamMember]", error.message);
+      return { status: "error", message: `Gagal menyimpan: ${error.message}` };
+    }
+  } else {
+    const { data, error } = await supabase
+      .from("team_members")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      console.error("[admin/saveTeamMember]", error?.message);
+      return {
+        status: "error",
+        message: `Gagal menyimpan: ${error?.message ?? "profil tidak terbuat"}`,
+      };
+    }
+    memberId = data.id;
+  }
+
+  // Tautan ditulis ulang seluruhnya — jumlahnya sedikit, jadi lebih sederhana
+  // daripada melacak perubahan per baris.
+  const socials = parseSocialLinks(text(formData, "socials"));
+
+  const { error: deleteError } = await supabase
+    .from("social_links")
+    .delete()
+    .eq("team_member_id", memberId);
+
+  if (deleteError) {
+    console.error("[admin/saveTeamMember/social]", deleteError.message);
+    return {
+      status: "error",
+      message: `Profil tersimpan tapi tautan gagal diperbarui: ${deleteError.message}`,
+    };
+  }
+
+  if (socials.length > 0) {
+    const { error: insertError } = await supabase.from("social_links").insert(
+      socials.map((social, index) => ({
+        team_member_id: memberId,
+        platform: social.platform,
+        label: social.label,
+        url: social.url,
+        sort_order: index,
+      })),
+    );
+
+    if (insertError) {
+      console.error("[admin/saveTeamMember/social]", insertError.message);
+      return {
+        status: "error",
+        message: `Profil tersimpan tapi tautan gagal dicatat: ${insertError.message}`,
+      };
+    }
   }
 
   revalidatePath("/admin/tim");

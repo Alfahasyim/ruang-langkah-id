@@ -10,9 +10,12 @@ import {
   Input,
   Textarea,
 } from "@/components/forms/Fields";
+import { ImageUploadField } from "@/components/admin/ImageUploadField";
+import { SocialLinksEditor } from "@/components/admin/SocialLinksEditor";
 import { Button } from "@/components/ui/Button";
 import { saveTeamMember } from "@/lib/admin/content-actions";
 import { INITIAL_FORM_STATE } from "@/lib/form-state";
+import { teamPhotoUrl } from "@/lib/team";
 import type { TeamMemberRow } from "@/lib/admin/queries";
 
 function SubmitButton({ isEdit }: { isEdit: boolean }) {
@@ -113,24 +116,27 @@ export function TeamForm({
         />
       </Field>
 
-      <Field
+      <ImageUploadField
+        name="photo_path"
+        inputId={`photo-${uid}`}
+        bucket="tim"
         label="Foto profil"
-        htmlFor={`photo-${uid}`}
+        maxBytes={4 * 1024 * 1024}
+        currentUrl={teamPhotoUrl(member?.photo_path ?? null)}
+        error={errors.photo}
         hint={
           member?.photo_path
             ? "Sudah ada foto. Pilih berkas baru hanya bila ingin menggantinya."
-            : "JPG, PNG, WebP, atau AVIF. Maksimal 4 MB. Kosongkan untuk memakai inisial berwarna."
+            : "Persegi, minimal 256 × 256 piksel. JPG, PNG, WebP, atau AVIF, maksimal 4 MB. Kosongkan untuk memakai inisial berwarna."
         }
-        error={errors.photo}
-      >
-        <input
-          id={`photo-${uid}`}
-          name="photo"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          className="w-full rounded-xl border border-sand-300 bg-white px-4 py-3 text-sm text-granite-700 file:mr-4 file:rounded-full file:border-0 file:bg-forest-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-sand-50"
-        />
-      </Field>
+      />
+
+      <SocialLinksEditor
+        name="socials"
+        initial={member?.socials ?? []}
+        title="Sosial media"
+        description="Tampil sebagai ikon kecil di kartu profil. Boleh lebih dari satu."
+      />
 
       <CheckboxRow
         name="is_published"

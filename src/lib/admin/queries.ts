@@ -1,4 +1,5 @@
 import { requireAdmin } from "../auth";
+import type { SocialLink } from "../social";
 import { createSupabaseSessionClient } from "../supabase/server";
 import type { Article, Trip } from "../types";
 
@@ -20,6 +21,7 @@ export type TeamMemberRow = {
   photo_path: string | null;
   sort_order: number;
   is_published: boolean;
+  socials: SocialLink[];
 };
 
 export type RegistrationRow = {
@@ -142,8 +144,11 @@ export async function getTeamRows(): Promise<TeamMemberRow[]> {
   const supabase = await adminClient();
   const { data, error } = await supabase
     .from("team_members")
-    .select("id, full_name, role, bio, photo_path, sort_order, is_published")
-    .order("sort_order", { ascending: true });
+    .select(
+      "id, full_name, role, bio, photo_path, sort_order, is_published, socials:social_links(id, platform, label, url, sort_order)",
+    )
+    .order("sort_order", { ascending: true })
+    .order("sort_order", { referencedTable: "social_links", ascending: true });
 
   if (error) {
     console.error("[admin/team]", error.message);
