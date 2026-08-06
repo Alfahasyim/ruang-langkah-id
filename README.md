@@ -76,6 +76,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
 | `gallery`       | Entri galeri (satu momen); fotonya di tabel anak `gallery_photos`            |
 | `gallery_photos`| Foto-foto milik satu entri, menunjuk ke berkas di bucket Storage `galeri`    |
 | `team_members`  | Profil tim di halaman Tentang Kami, foto di bucket Storage `tim`             |
+| `site_settings` | Identitas, kontak, dan logo situs — selalu satu baris                        |
+| `social_links`  | Tautan sosial; `team_member_id` kosong berarti milik situs                   |
 | `admins`        | Daftar user yang boleh masuk panel admin                                     |
 
 Detail penting:
@@ -123,6 +125,7 @@ Tanpa langkah 3, login akan ditolak meski kata sandinya benar.
 | `/admin/tim`       | Kelola profil tim: nama, peran, bio, foto, urutan tampil           |
 | `/admin/pendaftar` | Lihat data peserta & kontak darurat, ubah status pendaftaran       |
 | `/admin/anggota`   | Lihat pendaftar keanggotaan komunitas                              |
+| `/admin/pengaturan`| Nama, tagline, kontak, logo, dan sosial media komunitas            |
 
 Pada halaman Galeri dan Profil Tim, tombol **Ubah** di tiap kartu membuka form
 penyuntingan langsung di tempat. Foto bersifat opsional — tanpa foto, galeri menampilkan
@@ -150,6 +153,46 @@ Komponen ini memakai elemen `<dialog>` native, jadi tombol Esc, klik di luar gam
 penjagaan fokus sudah gratis dari browser tanpa dependensi tambahan. Untuk entri
 bergambar banyak, popup menyediakan tombol maju/mundur, penghitung `2 / 5`, dan navigasi
 lewat tombol panah kiri/kanan.
+
+### Pengaturan situs & sosial media
+
+Halaman `/admin/pengaturan` mengatur identitas yang tampil di seluruh situs: nama,
+nama pendek, tagline, email, telepon, alamat, logo, dan tautan sosial media.
+Nilai di [`src/lib/site.ts`](src/lib/site.ts) tetap ada sebagai **cadangan** —
+dipakai selama Supabase belum terhubung, lalu ditimpa oleh isi database.
+
+Tautan sosial media **boleh lebih dari satu**, termasuk beberapa akun dari platform
+yang sama. Tersedia Instagram, WhatsApp, Facebook, YouTube, TikTok, X, Telegram,
+LinkedIn, plus opsi *Lainnya* dengan nama bebas. Tautan yang sama juga bisa
+dipasang per anggota tim lewat `/admin/tim`, dan muncul sebagai ikon di kartu profil.
+
+> Lambang platform digambar sebagai SVG inline di
+> [`SocialIcon.tsx`](src/components/ui/SocialIcon.tsx), bukan dari pustaka ikon —
+> lucide-react versi ini sudah menghapus seluruh ikon brand.
+
+**Ketentuan berkas logo** (juga ditampilkan di formulir admin):
+
+| Aspek | Ketentuan |
+| --- | --- |
+| Bentuk | Persegi, rasio 1:1 — logo memanjang akan terpotong |
+| Resolusi ideal | 512 × 512 piksel |
+| Resolusi minimal | 256 × 256 piksel |
+| Format | PNG atau SVG berlatar transparan (disarankan); WebP/JPG bila latar solid |
+| Ukuran berkas | Maksimal 2 MB |
+
+Logo dipakai di header, footer, dan ikon tab browser (favicon). Bila dikosongkan,
+situs kembali memakai ikon jejak kaki bawaan.
+
+### Baris baru pada kolom teks
+
+Semua kolom teks panjang menerima baris baru — cukup tekan Enter saat mengetik, dan
+formatnya dipertahankan saat ditampilkan. Berlaku untuk deskripsi & ringkasan trip,
+bio anggota tim, ringkasan artikel, keterangan galeri, tagline, alamat, motivasi
+pendaftar, serta catatan peserta.
+
+Secara teknis: HTML normalnya meruntuhkan baris baru menjadi spasi, jadi setiap
+titik render memakai kelas `whitespace-pre-line`. Database tidak perlu diapa-apakan
+— kolom `text` memang sudah menyimpan `\n` apa adanya.
 
 ### Bagaimana aksesnya dijaga
 

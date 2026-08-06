@@ -1,3 +1,4 @@
+import type { SocialLink } from "./social";
 import { createSupabaseServerClient, isSupabaseConfigured } from "./supabaseServer";
 
 export type TeamMember = {
@@ -7,6 +8,7 @@ export type TeamMember = {
   bio: string;
   /** Path berkas di bucket Storage 'tim'. Null = tampil sebagai inisial berwarna. */
   photo_path: string | null;
+  socials: SocialLink[];
 };
 
 /** Dipakai saat Supabase belum terhubung supaya halaman Tentang Kami tetap utuh. */
@@ -17,6 +19,7 @@ export const SEED_TEAM: TeamMember[] = [
     role: "Ketua Komunitas & Trip Leader",
     bio: "Pendaki 14 tahun, sertifikasi Wilderness First Responder. Percaya bahwa keputusan turun lebih berani daripada memaksa naik.",
     photo_path: null,
+    socials: [],
   },
   {
     id: "t2",
@@ -24,6 +27,7 @@ export const SEED_TEAM: TeamMember[] = [
     role: "Koordinator Konservasi",
     bio: "Sarjana kehutanan yang menjaga agar setiap trip berdampak baik bagi ekosistem dan ekonomi desa penyangga.",
     photo_path: null,
+    socials: [],
   },
   {
     id: "t3",
@@ -31,6 +35,7 @@ export const SEED_TEAM: TeamMember[] = [
     role: "Penanggung Jawab Medis",
     bio: "Dokter umum sekaligus pendaki. Menyusun protokol medis lapangan dan melatih tim P3K di tiap kelompok.",
     photo_path: null,
+    socials: [],
   },
   {
     id: "t4",
@@ -38,6 +43,7 @@ export const SEED_TEAM: TeamMember[] = [
     role: "Kepala Navigasi & Logistik",
     bio: "Mantan anggota SAR daerah. Memetakan jalur, menyiapkan rencana evakuasi, dan mengajar kelas kompas.",
     photo_path: null,
+    socials: [],
   },
   {
     id: "t5",
@@ -45,6 +51,7 @@ export const SEED_TEAM: TeamMember[] = [
     role: "Koordinator Anggota Baru",
     bio: "Dulu peserta paling lambat di rombongan, kini memastikan tidak ada pemula yang merasa sendirian di jalur.",
     photo_path: null,
+    socials: [],
   },
   {
     id: "t6",
@@ -52,6 +59,7 @@ export const SEED_TEAM: TeamMember[] = [
     role: "Dokumentasi & Media",
     bio: "Merekam perjalanan tanpa mengganggu satwa maupun merusak vegetasi demi satu frame yang bagus.",
     photo_path: null,
+    socials: [],
   },
 ];
 
@@ -92,9 +100,12 @@ export async function getTeam(): Promise<TeamMember[]> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("team_members")
-    .select("id, full_name, role, bio, photo_path")
+    .select(
+      "id, full_name, role, bio, photo_path, socials:social_links(id, platform, label, url, sort_order)",
+    )
     .eq("is_published", true)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("sort_order", { referencedTable: "social_links", ascending: true });
 
   if (error) {
     console.error("[team] gagal memuat:", error.message);

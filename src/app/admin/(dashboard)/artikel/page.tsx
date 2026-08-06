@@ -73,7 +73,7 @@ export default async function AdminArticlePage({
             <tr key={article.id} className="align-top">
               <td className="px-5 py-4">
                 <p className="font-medium text-forest-950">{article.title}</p>
-                <p className="mt-0.5 line-clamp-2 max-w-md text-xs text-granite-500">
+                <p className="whitespace-pre-line mt-0.5 line-clamp-2 max-w-md text-xs text-granite-500">
                   {article.excerpt}
                 </p>
               </td>

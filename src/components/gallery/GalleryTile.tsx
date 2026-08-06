@@ -110,7 +110,7 @@ export function GalleryTile({
       <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-forest-950/85 via-forest-950/10 to-transparent" />
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
-        <p className="text-sm leading-snug font-semibold text-balance text-sand-50">
+        <p className="whitespace-pre-line text-sm leading-snug font-semibold text-balance text-sand-50">
           {item.caption}
         </p>
         <p className="mt-1 text-xs text-moss-200">

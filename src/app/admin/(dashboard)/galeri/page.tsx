@@ -131,7 +131,7 @@ export default async function AdminGalleryPage({
 
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm leading-snug font-medium text-forest-950">
+                        <p className="whitespace-pre-line text-sm leading-snug font-medium text-forest-950">
                           {item.caption}
                         </p>
                         <Badge tone={item.is_published ? "success" : "neutral"}>

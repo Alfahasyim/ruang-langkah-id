@@ -97,7 +97,7 @@ export default async function AdminTeamPage({
                         <p className="mt-0.5 text-sm text-terracotta-600">
                           {member.role}
                         </p>
-                        <p className="mt-2 text-xs leading-relaxed text-granite-600">
+                        <p className="whitespace-pre-line mt-2 text-xs leading-relaxed text-granite-600">
                           {member.bio}
                         </p>
                         <p className="mt-2 text-xs text-granite-400">

@@ -9,7 +9,15 @@ import { Container } from "@/components/ui/Container";
 import { MAIN_NAV } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-export function Header() {
+export function Header({
+  name,
+  shortName,
+  logoUrl,
+}: {
+  name: string;
+  shortName: string;
+  logoUrl: string | null;
+}) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const closeMenu = () => setIsOpen(false);
@@ -32,7 +40,7 @@ export function Header() {
       </div>
 
       <Container className="flex h-18 items-center justify-between gap-4">
-        <Logo />
+        <Logo name={name} shortName={shortName} logoUrl={logoUrl} />
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Navigasi utama">
           {MAIN_NAV.map((item) => {

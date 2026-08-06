@@ -13,6 +13,7 @@ import {
   Menu,
   Mountain,
   NotebookPen,
+  Settings,
   UsersRound,
   X,
 } from "lucide-react";
@@ -27,6 +28,7 @@ const NAV = [
   { href: "/admin/tim", label: "Profil Tim", icon: Contact },
   { href: "/admin/pendaftar", label: "Pendaftar Trip", icon: ClipboardList },
   { href: "/admin/anggota", label: "Anggota", icon: UsersRound },
+  { href: "/admin/pengaturan", label: "Pengaturan Situs", icon: Settings },
 ];
 
 export function AdminSidebar({ email }: { email: string }) {

@@ -46,27 +46,30 @@ berkasnya.
 | --- | --- | --- |
 | **Halaman publik** | `src/app/(public)/` | 8 berkas: beranda, tentang-kami, trip, trip/[slug], panduan, galeri, gabung, not-found |
 | **Kerangka publik** | `src/app/(public)/layout.tsx` | Header + Footer + skip-link |
-| **Halaman admin** | `src/app/admin/(dashboard)/` | 11 berkas: dasbor, trip (list/baru/[id]), artikel (list/baru/[id]), galeri, tim, pendaftar, anggota |
+| **Halaman admin** | `src/app/admin/(dashboard)/` | 12 berkas: dasbor, trip (list/baru/[id]), artikel (list/baru/[id]), galeri, tim, pendaftar, anggota, pengaturan |
 | **Kerangka admin** | `src/app/admin/(dashboard)/layout.tsx` | Sidebar + **penjaga sesi** (`requireAdmin()`) |
 | **Halaman login** | `src/app/admin/login/page.tsx` | Sengaja di luar `(dashboard)` supaya tidak kena penjaga sesi |
 | **Root layout** | `src/app/layout.tsx` | Hanya `<html>`, `<body>`, font, metadata global |
-| **Komponen UI umum** | `src/components/ui/` | Button, Container, PageHeader, SectionHeading, Lightbox, Zoomable |
+| **Komponen UI umum** | `src/components/ui/` | Button, Container, PageHeader, SectionHeading, Lightbox, Zoomable, SocialIcon |
 | **Komponen publik** | `src/components/home/`, `trips/`, `gallery/`, `about/`, `layout/`, `forms/` | |
-| **Komponen admin** | `src/components/admin/` | Sidebar, 5 form CRUD, tabel, tombol hapus |
+| **Komponen admin** | `src/components/admin/` | Sidebar, form CRUD, editor tautan sosial, unggah gambar, tabel |
 | **Styling** | `src/app/globals.css` | Tailwind v4 — palet & font didefinisikan di blok `@theme`, bukan `tailwind.config.js` |
 
 **Route group `(public)` dan `(dashboard)` tidak muncul di URL.** Keduanya hanya
 alat untuk memberi dua kerangka halaman yang berbeda. `/admin/(dashboard)/tim/page.tsx`
 tetap diakses sebagai `/admin/tim`.
 
-#### Client Components (13 berkas — kode yang benar-benar jalan di browser)
+#### Client Components (16 berkas — kode yang benar-benar jalan di browser)
 
 ```
 src/components/admin/AdminSidebar.tsx      ← butuh usePathname untuk state aktif
 src/components/admin/ArticleForm.tsx       ← useActionState
 src/components/admin/DeleteForm.tsx        ← window.confirm sebelum submit
 src/components/admin/GalleryForm.tsx       ← unggah langsung ke Storage
+src/components/admin/ImageUploadField.tsx  ← unggah satu berkas (tim & logo)
 src/components/admin/LoginForm.tsx
+src/components/admin/SiteSettingsForm.tsx
+src/components/admin/SocialLinksEditor.tsx ← baris tautan dinamis
 src/components/admin/TeamForm.tsx
 src/components/admin/TripForm.tsx
 src/components/forms/MembershipForm.tsx
@@ -89,7 +92,8 @@ Sisanya Server Component. Kalau ragu suatu komponen jalan di mana: **cari
 | **Pelindung rute** | `src/proxy.ts` | Cek optimistik `/admin/:path*` + penyegaran token |
 | **Mutasi publik** | `src/lib/actions.ts` | `registerForTrip()`, `joinCommunity()` |
 | **Mutasi admin** | `src/lib/admin/content-actions.ts` | 10 Server Action CRUD |
-| **Baca publik** | `src/lib/queries.ts`, `gallery.ts`, `team.ts` | Data untuk halaman publik |
+| **Pengaturan situs** | `src/lib/admin/settings-actions.ts` | `saveSiteSettings()`, `removeSiteLogo()` |
+| **Baca publik** | `src/lib/queries.ts`, `gallery.ts`, `team.ts`, `settings.ts` | Data untuk halaman publik |
 | **Baca admin** | `src/lib/admin/queries.ts` | Data untuk panel admin |
 | **Skema database** | `supabase/schema.sql`, `admin.sql`, `seed.sql` | Tabel, RLS, fungsi SQL |
 
@@ -102,7 +106,7 @@ query gagal tanpa pesan jelas.
 | --- | --- | --- | --- |
 | `createSupabaseServerClient()` | `src/lib/supabaseServer.ts` | **Anonim** | `lib/queries.ts`, `lib/gallery.ts`, `lib/team.ts`, `lib/actions.ts` |
 | `createSupabaseSessionClient()` | `src/lib/supabase/server.ts` | **Admin login** (baca cookie) | `lib/auth.ts`, `lib/admin/queries.ts`, `lib/admin/content-actions.ts`, `lib/admin/auth-actions.ts` |
-| `createSupabaseBrowserClient()` | `src/lib/supabaseClient.ts` | Sesi browser | `components/admin/GalleryForm.tsx` (khusus unggah berkas) |
+| `createSupabaseBrowserClient()` | `src/lib/supabaseClient.ts` | Sesi browser | `components/admin/GalleryForm.tsx`, `ImageUploadField.tsx` (khusus unggah berkas) |
 
 > **Aturan praktis:** kalau kode Anda butuh tahu *siapa* yang sedang mengakses,
 > pakai `createSupabaseSessionClient()`. Kalau hanya menampilkan data publik,
@@ -124,9 +128,11 @@ query gagal tanpa pesan jelas.
 | `gallery` | Entri galeri (satu momen) | `admin.sql` |
 | `gallery_photos` | Foto milik satu entri (relasi anak) | `admin.sql` |
 | `team_members` | Profil tim | `admin.sql` |
+| `site_settings` | Identitas, kontak, dan logo situs (baris tunggal) | `admin.sql` |
+| `social_links` | Tautan sosial; `team_member_id` NULL = milik situs | `admin.sql` |
 | `admins` | Daftar user yang boleh masuk panel | `admin.sql` |
 
-**Bucket Storage:** `galeri` (foto galeri), `tim` (foto profil tim). Keduanya publik untuk dibaca.
+**Bucket Storage:** `galeri` (foto galeri), `tim` (foto profil tim), `situs` (logo). Ketiganya publik untuk dibaca.
 
 **Fungsi SQL:** `register_trip()` (transaksi pendaftaran), `is_admin()` (dipakai
 di dalam policy RLS), `set_updated_at()` (trigger).
@@ -142,7 +148,8 @@ di dalam policy RLS), `set_updated_at()` (trigger).
 | | `trips` | `getTripBySlug(slug)` | **Read** — detail satu trip |
 | | `articles` | `getArticles()` | **Read** — artikel terbit |
 | `src/lib/gallery.ts` | `gallery` + `gallery_photos` | `getGallery()` | **Read** — entri terbit beserta fotonya (nested select) |
-| `src/lib/team.ts` | `team_members` | `getTeam()` | **Read** — profil tim terbit |
+| `src/lib/team.ts` | `team_members` + `social_links` | `getTeam()` | **Read** — profil tim terbit beserta tautannya |
+| `src/lib/settings.ts` | `site_settings` + `social_links` | `getSiteSettings()` | **Read** — identitas situs, fallback ke `site.ts` |
 
 Ketiganya punya **fallback ke data contoh** (`seed-data.ts`, `SEED_GALLERY`,
 `SEED_TEAM`) bila Supabase belum terhubung atau query gagal. Karena itu situs
@@ -173,7 +180,7 @@ database, bukan di TypeScript** — kalau ada anomali kuota, periksa
 | | `articles` | `getAllArticles()` | **Read** — termasuk draf |
 | | `articles` | `getArticleById(id)` | **Read** |
 | | `gallery` + `gallery_photos` | `getGalleryRows()` | **Read** |
-| | `team_members` | `getTeamRows()` | **Read** |
+| | `team_members` + `social_links` | `getTeamRows()` | **Read** |
 | | `registrations` + `trips` | `getRegistrations()` | **Read** — join judul trip |
 | | `members` | `getMembers()` | **Read** |
 | | `trips`,`registrations`,`members`,`articles` | `getDashboardStats()` | **Read** — 5 hitungan paralel |
@@ -189,9 +196,11 @@ database, bukan di TypeScript** — kalau ada anomali kuota, periksa
 | | `gallery` + `gallery_photos` | `saveGalleryItem()` | **Insert / Update** entri, **Insert** foto |
 | | `gallery` + Storage `galeri` | `deleteGalleryItem()` | **Delete** entri + berkas |
 | | `gallery_photos` + Storage `galeri` | `deleteGalleryPhoto()` | **Delete** satu foto |
-| | `team_members` + Storage `tim` | `saveTeamMember()` | **Insert / Update** + unggah foto |
+| | `team_members` + `social_links` | `saveTeamMember()` | **Insert / Update** profil, tulis ulang tautan |
 | | `team_members` + Storage `tim` | `deleteTeamMember()` | **Delete** + hapus berkas |
 | | `registrations` | `updateRegistrationStatus()` | **Update** status |
+| `src/lib/admin/settings-actions.ts` | `site_settings` + `social_links` | `saveSiteSettings()` | **Update** identitas, tulis ulang tautan |
+| | `site_settings` + Storage `situs` | `removeSiteLogo()` | **Update** + hapus berkas |
 
 #### E. Autentikasi
 
@@ -206,15 +215,16 @@ database, bukan di TypeScript** — kalau ada anomali kuota, periksa
 
 | Berkas | Target | Fungsi | Operasi |
 | --- | --- | --- | --- |
-| `src/components/admin/GalleryForm.tsx` | Storage bucket `galeri` | `handleFiles()` | **Upload** langsung dari browser |
+| `src/components/admin/GalleryForm.tsx` | Storage bucket `galeri` | `handleFiles()` | **Upload** banyak berkas dari browser |
 | | Storage bucket `galeri` | `removeStaged()` | **Delete** berkas batal |
+| `src/components/admin/ImageUploadField.tsx` | Bucket `tim` / `situs` | `handleFile()` | **Upload** satu berkas dari browser |
 
 **Kenapa tidak lewat Server Action?** Serverless function di Vercel membatasi
 body request ke **4,5 MB** — batas platform yang tidak bisa ditembus dengan
-menaikkan `serverActions.bodySizeLimit` di `next.config.ts`. Karena itu byte foto
-naik langsung ke Storage dari browser, dan Server Action hanya menerima daftar
-*path* berupa teks. Foto tim (`saveTeamMember`) masih lewat Server Action karena
-hanya satu berkas per profil.
+menaikkan `serverActions.bodySizeLimit` di `next.config.ts`. Karena itu byte
+gambar naik langsung ke Storage dari browser, dan Server Action hanya menerima
+daftar *path* berupa teks yang divalidasi ulang di server. **Seluruh** unggahan
+gambar memakai jalur ini: galeri, foto tim, dan logo situs.
 
 ### 2.3 Alur data lengkap — tiga contoh
 
@@ -298,7 +308,7 @@ Dua keputusan penting di sini:
 
 ### 3.3 Di mana otorisasi dipasang (hasil audit)
 
-**Semua 10 Server Action admin memanggil `requireAdmin()` sebagai baris pertama:**
+**Semua 12 Server Action admin memanggil `requireAdmin()` sebagai baris pertama** (10 di `content-actions.ts`, 2 di `settings-actions.ts`):
 
 | Server Action | Guard |
 | --- | --- |
@@ -312,6 +322,8 @@ Dua keputusan penting di sini:
 | `saveTeamMember` | ✅ |
 | `deleteTeamMember` | ✅ |
 | `updateRegistrationStatus` | ✅ |
+| `saveSiteSettings` | ✅ |
+| `removeSiteLogo` | ✅ |
 
 **Semua fungsi baca admin dijaga terpusat.** `src/lib/admin/queries.ts` punya
 helper privat:
@@ -348,8 +360,10 @@ eksplisit.
 | `team_members` | SELECT (terbit) | ALL |
 | `registrations` | **INSERT saja** | SELECT / UPDATE / DELETE |
 | `members` | **INSERT saja** | SELECT / UPDATE / DELETE |
+| `site_settings` | SELECT | UPDATE |
+| `social_links` | SELECT | ALL |
 | `admins` | — | SELECT baris sendiri |
-| Storage `galeri`, `tim` | SELECT | INSERT / DELETE |
+| Storage `galeri`, `tim`, `situs` | SELECT | INSERT / DELETE |
 
 Yang paling penting: **publik bisa menulis pendaftaran tapi tidak bisa membacanya.**
 Data peserta beserta kontak daruratnya tidak akan terbaca oleh siapa pun yang
