@@ -226,6 +226,27 @@ create table if not exists public.site_settings (
   constraint site_settings_singleton check (id = 1)
 );
 
+-- Banner beranda. Ditambahkan terpisah dengan "add column if not exists" supaya
+-- proyek yang sudah menjalankan versi sebelumnya tetap ikut terbarui.
+alter table public.site_settings
+  add column if not exists banner_path text;
+
+-- Kepekatan lapisan gelap di atas banner (0–90). Tanpa ini, foto terang
+-- membuat teks putih di hero tidak terbaca.
+alter table public.site_settings
+  add column if not exists banner_overlay smallint not null default 55;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'site_settings_overlay_range'
+  ) then
+    alter table public.site_settings
+      add constraint site_settings_overlay_range
+      check (banner_overlay between 0 and 90);
+  end if;
+end $$;
+
 insert into public.site_settings (id) values (1) on conflict (id) do nothing;
 
 -- Satu tabel untuk dua pemilik: team_member_id NULL berarti tautan milik

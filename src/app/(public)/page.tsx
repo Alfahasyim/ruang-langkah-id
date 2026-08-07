@@ -5,6 +5,7 @@ import { JoinCta } from "@/components/home/JoinCta";
 import { UpcomingTrips } from "@/components/home/UpcomingTrips";
 import { ValuesSection } from "@/components/home/ValuesSection";
 import { getUpcomingTrips } from "@/lib/queries";
+import { getSiteSettings, siteAssetUrl } from "@/lib/settings";
 import type { TripCategory } from "@/lib/types";
 import { formatDateRange } from "@/lib/utils";
 
@@ -12,7 +13,10 @@ import { formatDateRange } from "@/lib/utils";
 export const revalidate = 300;
 
 export default async function HomePage() {
-  const trips = await getUpcomingTrips();
+  const [trips, settings] = await Promise.all([
+    getUpcomingTrips(),
+    getSiteSettings(),
+  ]);
   const featured = trips.slice(0, 3);
 
   const counts = trips.reduce(
@@ -33,6 +37,8 @@ export default async function HomePage() {
             ? `${nextTrip.location} · ${formatDateRange(nextTrip.start_date, nextTrip.end_date)}`
             : undefined
         }
+        bannerUrl={siteAssetUrl(settings.banner_path)}
+        bannerOverlay={settings.banner_overlay}
       />
       <CategoryStrip counts={counts} />
       <ValuesSection />

@@ -10,8 +10,14 @@ export type SiteSettings = {
   phone: string | null;
   address: string | null;
   logo_path: string | null;
+  /** Null = beranda memakai latar warna bawaan, bukan foto. */
+  banner_path: string | null;
+  /** Kepekatan lapisan gelap di atas banner, 0–90. */
+  banner_overlay: number;
   socials: SocialLink[];
 };
+
+export const DEFAULT_BANNER_OVERLAY = 55;
 
 /**
  * Nilai bawaan dari src/lib/site.ts. Situs harus tetap tampil utuh sebelum
@@ -26,6 +32,8 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   phone: SITE.whatsapp,
   address: SITE.basecamp,
   logo_path: null,
+  banner_path: null,
+  banner_overlay: DEFAULT_BANNER_OVERLAY,
   socials: [],
 };
 
@@ -42,11 +50,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
   const supabase = createSupabaseServerClient();
 
   const [settingsResult, socialsResult] = await Promise.all([
-    supabase
-      .from("site_settings")
-      .select("name, short_name, tagline, email, phone, address, logo_path")
-      .eq("id", 1)
-      .maybeSingle(),
+    // Sengaja select("*"), bukan daftar kolom. Tabel ini berkembang seiring
+    // fitur baru, dan menyebut kolom yang belum ada membuat SELURUH query gagal
+    // — pengaturan yang sudah tersimpan ikut hilang sampai migrasi dijalankan.
+    // Dengan "*", kolom yang belum ada cukup jatuh ke nilai bawaan di bawah.
+    supabase.from("site_settings").select("*").eq("id", 1).maybeSingle(),
     supabase
       .from("social_links")
       .select("id, platform, label, url, sort_order")
@@ -69,6 +77,8 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     phone: row?.phone ?? DEFAULT_SETTINGS.phone,
     address: row?.address ?? DEFAULT_SETTINGS.address,
     logo_path: row?.logo_path ?? null,
+    banner_path: row?.banner_path ?? null,
+    banner_overlay: row?.banner_overlay ?? DEFAULT_BANNER_OVERLAY,
     socials: (socialsResult.data ?? []) as SocialLink[],
   };
 }

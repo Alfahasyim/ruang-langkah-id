@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { ArrowRight, CalendarDays, Compass, Leaf } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
@@ -9,10 +10,44 @@ const STATS = [
   { value: "0", label: "Insiden serius dalam 3 tahun terakhir" },
 ];
 
-export function Hero({ nextTripLabel }: { nextTripLabel?: string }) {
+export function Hero({
+  nextTripLabel,
+  bannerUrl,
+  bannerOverlay = 55,
+}: {
+  nextTripLabel?: string;
+  /** Null/undefined = pakai latar warna bawaan (pola topografi). */
+  bannerUrl?: string | null;
+  bannerOverlay?: number;
+}) {
   return (
     <section className="relative overflow-hidden bg-forest-950 text-sand-50">
-      <div className="topo-pattern absolute inset-0 opacity-70" aria-hidden />
+      {bannerUrl ? (
+        <>
+          <Image
+            src={bannerUrl}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          {/* Lapisan gelap menjaga teks putih tetap terbaca di atas foto apa pun.
+              Kepekatannya diatur admin karena tiap foto beda tingkat terangnya. */}
+          <div
+            className="absolute inset-0 bg-forest-950"
+            style={{ opacity: bannerOverlay / 100 }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-linear-to-r from-forest-950/80 via-forest-950/30 to-transparent"
+            aria-hidden
+          />
+        </>
+      ) : (
+        <div className="topo-pattern absolute inset-0 opacity-70" aria-hidden />
+      )}
+
       <div
         className="absolute inset-x-0 bottom-0 h-64 bg-linear-to-t from-forest-950 to-transparent"
         aria-hidden

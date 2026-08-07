@@ -128,11 +128,11 @@ query gagal tanpa pesan jelas.
 | `gallery` | Entri galeri (satu momen) | `admin.sql` |
 | `gallery_photos` | Foto milik satu entri (relasi anak) | `admin.sql` |
 | `team_members` | Profil tim | `admin.sql` |
-| `site_settings` | Identitas, kontak, dan logo situs (baris tunggal) | `admin.sql` |
+| `site_settings` | Identitas, kontak, logo, dan banner situs (baris tunggal) | `admin.sql` |
 | `social_links` | Tautan sosial; `team_member_id` NULL = milik situs | `admin.sql` |
 | `admins` | Daftar user yang boleh masuk panel | `admin.sql` |
 
-**Bucket Storage:** `galeri` (foto galeri), `tim` (foto profil tim), `situs` (logo). Ketiganya publik untuk dibaca.
+**Bucket Storage:** `galeri` (foto galeri), `tim` (foto profil tim), `situs` (logo & banner). Ketiganya publik untuk dibaca.
 
 **Fungsi SQL:** `register_trip()` (transaksi pendaftaran), `is_admin()` (dipakai
 di dalam policy RLS), `set_updated_at()` (trigger).
@@ -201,6 +201,7 @@ database, bukan di TypeScript** — kalau ada anomali kuota, periksa
 | | `registrations` | `updateRegistrationStatus()` | **Update** status |
 | `src/lib/admin/settings-actions.ts` | `site_settings` + `social_links` | `saveSiteSettings()` | **Update** identitas, tulis ulang tautan |
 | | `site_settings` + Storage `situs` | `removeSiteLogo()` | **Update** + hapus berkas |
+| | `site_settings` + Storage `situs` | `removeSiteBanner()` | **Update** + hapus berkas |
 
 #### E. Autentikasi
 
@@ -308,7 +309,7 @@ Dua keputusan penting di sini:
 
 ### 3.3 Di mana otorisasi dipasang (hasil audit)
 
-**Semua 12 Server Action admin memanggil `requireAdmin()` sebagai baris pertama** (10 di `content-actions.ts`, 2 di `settings-actions.ts`):
+**Semua 13 Server Action admin memanggil `requireAdmin()` sebagai baris pertama** (10 di `content-actions.ts`, 3 di `settings-actions.ts`):
 
 | Server Action | Guard |
 | --- | --- |
@@ -324,6 +325,7 @@ Dua keputusan penting di sini:
 | `updateRegistrationStatus` | ✅ |
 | `saveSiteSettings` | ✅ |
 | `removeSiteLogo` | ✅ |
+| `removeSiteBanner` | ✅ |
 
 **Semua fungsi baca admin dijaga terpusat.** `src/lib/admin/queries.ts` punya
 helper privat:
@@ -397,7 +399,13 @@ kalau kode dikembangkan tanpa menyadarinya:
 3. **Pesan login sengaja kabur.** `signInAdmin()` menjawab "Email atau kata sandi
    salah" tanpa membedakan mana yang keliru, supaya tidak bisa dipakai menebak
    email mana yang terdaftar. Jangan diperjelas demi "UX yang lebih baik".
-4. **Halaman admin wajib dinamis.** `export const dynamic = "force-dynamic"` ada
+4. **`site_settings` dibaca dengan `select("*")`, bukan daftar kolom.** Tabel ini
+   bertambah kolom setiap ada fitur baru. Menyebut kolom yang belum ada membuat
+   PostgREST membalas **HTTP 400** dan *seluruh* baris gagal terbaca — artinya
+   nama, kontak, dan logo yang sudah tersimpan ikut hilang sampai migrasi
+   dijalankan. Dengan `*`, kolom yang belum ada tinggal jatuh ke nilai bawaan.
+   **Jangan ubah kembali menjadi daftar kolom.**
+5. **Halaman admin wajib dinamis.** `export const dynamic = "force-dynamic"` ada
    di layout admin dan tiap halamannya. Tanpa ini, halaman yang tidak menyentuh
    cookie bisa ter-*prerender* statis saat build, sehingga hasil pengecekan admin
    ikut ter-cache. Ini pernah benar-benar terjadi di proyek ini dan tertangkap
