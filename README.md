@@ -47,6 +47,11 @@ tiga berkas ini **berurutan**:
 2. [`supabase/admin.sql`](supabase/admin.sql) — galeri, hak akses admin, bucket Storage
 3. [`supabase/seed.sql`](supabase/seed.sql) — data contoh (opsional)
 
+> **Database yang sudah berjalan?** Jangan jalankan ulang `admin.sql` seluruhnya.
+> Pakai berkas selisih di [`supabase/migrations/`](supabase/migrations) — dijalankan
+> berurutan sesuai nomornya, dan cukup yang belum pernah dijalankan. Tiap berkas
+> aman diulang dan diakhiri query verifikasi.
+
 **c. Isi kredensial.** Ambil URL dan anon key di Dashboard → Project Settings → Data API.
 
 ```bash
