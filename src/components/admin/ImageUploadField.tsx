@@ -32,6 +32,7 @@ export function ImageUploadField({
   allowSvg = false,
   currentUrl,
   inputId,
+  preview = "square",
 }: {
   /** Nama input tersembunyi yang menampung path hasil unggahan. */
   name: string;
@@ -43,6 +44,8 @@ export function ImageUploadField({
   allowSvg?: boolean;
   currentUrl?: string | null;
   inputId: string;
+  /** "wide" untuk gambar lanskap seperti banner, "square" untuk logo/foto profil. */
+  preview?: "square" | "wide";
 }) {
   const [path, setPath] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -122,20 +125,36 @@ export function ImageUploadField({
       >
         <div className="flex flex-col gap-3">
           {shownUrl && (
-            <div className="flex items-center gap-3">
-              <span className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-sand-300 bg-white p-1.5">
+            <div
+              className={
+                preview === "wide"
+                  ? "flex flex-col gap-3"
+                  : "flex items-center gap-3"
+              }
+            >
+              <span
+                className={
+                  preview === "wide"
+                    ? "block aspect-[21/9] w-full overflow-hidden rounded-xl border border-sand-300 bg-forest-950"
+                    : "flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-sand-300 bg-white p-1.5"
+                }
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element -- pratinjau blob lokal & aset Storage berukuran kecil */}
                 <img
                   src={shownUrl}
                   alt="Pratinjau"
-                  className="max-h-full max-w-full object-contain"
+                  className={
+                    preview === "wide"
+                      ? "h-full w-full object-cover"
+                      : "max-h-full max-w-full object-contain"
+                  }
                 />
               </span>
               {previewUrl && (
                 <button
                   type="button"
                   onClick={clearStaged}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-terracotta-700 transition-colors hover:bg-terracotta-50"
+                  className="inline-flex self-start items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-terracotta-700 transition-colors hover:bg-terracotta-50"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden />
                   Batalkan berkas baru

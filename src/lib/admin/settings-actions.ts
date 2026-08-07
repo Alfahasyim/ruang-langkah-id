@@ -24,6 +24,8 @@ export async function saveSiteSettings(
   const shortName = text(formData, "short_name");
   const tagline = text(formData, "tagline");
   const logoPath = text(formData, "logo_path");
+  const bannerPath = text(formData, "banner_path");
+  const bannerOverlay = Number(text(formData, "banner_overlay") || 55);
 
   const fieldErrors: Record<string, string> = {};
   if (name.length < 3) fieldErrors.name = "Nama komunitas minimal 3 karakter.";
@@ -31,6 +33,10 @@ export async function saveSiteSettings(
   if (tagline.length < 10) fieldErrors.tagline = "Tagline minimal 10 karakter.";
   if (logoPath && !SAFE_PATH.test(logoPath))
     fieldErrors.logo = "Nama berkas logo tidak valid.";
+  if (bannerPath && !SAFE_PATH.test(bannerPath))
+    fieldErrors.banner = "Nama berkas banner tidak valid.";
+  if (!Number.isInteger(bannerOverlay) || bannerOverlay < 0 || bannerOverlay > 90)
+    fieldErrors.banner_overlay = "Kepekatan harus antara 0 sampai 90.";
 
   if (Object.keys(fieldErrors).length > 0) {
     return {
@@ -51,15 +57,28 @@ export async function saveSiteSettings(
       email: text(formData, "email") || null,
       phone: text(formData, "phone") || null,
       address: text(formData, "address") || null,
+      banner_overlay: bannerOverlay,
       updated_at: new Date().toISOString(),
-      // Logo hanya ditimpa bila admin mengunggah yang baru.
+      // Logo & banner hanya ditimpa bila admin mengunggah yang baru; berkas
+      // lama dilepas lewat tombol hapus tersendiri.
       ...(logoPath ? { logo_path: logoPath } : {}),
+      ...(bannerPath ? { banner_path: bannerPath } : {}),
     })
     .eq("id", 1);
 
   if (error) {
     console.error("[admin/saveSiteSettings]", error.message);
-    return { status: "error", message: `Gagal menyimpan: ${error.message}` };
+
+    // Kolom baru ditambahkan lewat migrasi; tanpa itu seluruh update gagal.
+    // Pesan mentah PostgREST tidak memberi tahu apa yang harus dilakukan.
+    const missingColumn = /column .* does not exist/i.test(error.message);
+
+    return {
+      status: "error",
+      message: missingColumn
+        ? "Struktur database belum diperbarui. Jalankan ulang supabase/admin.sql di SQL Editor Supabase, lalu coba simpan lagi."
+        : `Gagal menyimpan: ${error.message}`,
+    };
   }
 
   // Tautan situs ditulis ulang seluruhnya: hapus yang lama lalu masukkan yang
@@ -123,4 +142,26 @@ export async function removeSiteLogo() {
 
   revalidatePath("/", "layout");
   redirect("/admin/pengaturan?pesan=logo-dihapus");
+}
+
+/** Mengembalikan beranda ke latar warna bawaan. */
+export async function removeSiteBanner() {
+  await requireAdmin();
+
+  const supabase = await createSupabaseSessionClient();
+
+  const { data } = await supabase
+    .from("site_settings")
+    .select("banner_path")
+    .eq("id", 1)
+    .maybeSingle();
+
+  await supabase.from("site_settings").update({ banner_path: null }).eq("id", 1);
+
+  if (data?.banner_path) {
+    await supabase.storage.from("situs").remove([data.banner_path]);
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/admin/pengaturan?pesan=banner-dihapus");
 }

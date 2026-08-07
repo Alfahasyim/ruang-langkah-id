@@ -76,7 +76,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....
 | `gallery`       | Entri galeri (satu momen); fotonya di tabel anak `gallery_photos`            |
 | `gallery_photos`| Foto-foto milik satu entri, menunjuk ke berkas di bucket Storage `galeri`    |
 | `team_members`  | Profil tim di halaman Tentang Kami, foto di bucket Storage `tim`             |
-| `site_settings` | Identitas, kontak, dan logo situs — selalu satu baris                        |
+| `site_settings` | Identitas, kontak, logo, dan banner situs — selalu satu baris                |
 | `social_links`  | Tautan sosial; `team_member_id` kosong berarti milik situs                   |
 | `admins`        | Daftar user yang boleh masuk panel admin                                     |
 
@@ -125,7 +125,7 @@ Tanpa langkah 3, login akan ditolak meski kata sandinya benar.
 | `/admin/tim`       | Kelola profil tim: nama, peran, bio, foto, urutan tampil           |
 | `/admin/pendaftar` | Lihat data peserta & kontak darurat, ubah status pendaftaran       |
 | `/admin/anggota`   | Lihat pendaftar keanggotaan komunitas                              |
-| `/admin/pengaturan`| Nama, tagline, kontak, logo, dan sosial media komunitas            |
+| `/admin/pengaturan`| Nama, tagline, kontak, logo, banner beranda, dan sosial media      |
 
 Pada halaman Galeri dan Profil Tim, tombol **Ubah** di tiap kartu membuka form
 penyuntingan langsung di tempat. Foto bersifat opsional — tanpa foto, galeri menampilkan
@@ -182,6 +182,24 @@ dipasang per anggota tim lewat `/admin/tim`, dan muncul sebagai ikon di kartu pr
 
 Logo dipakai di header, footer, dan ikon tab browser (favicon). Bila dikosongkan,
 situs kembali memakai ikon jejak kaki bawaan.
+
+**Ketentuan berkas banner beranda:**
+
+| Aspek | Ketentuan |
+| --- | --- |
+| Bentuk | Lanskap, rasio 21:9 sampai 16:9 |
+| Resolusi ideal | 2400 × 1100 piksel (minimal 1600 × 800) |
+| Format | JPG atau WebP — paling hemat untuk foto |
+| Ukuran berkas | Maksimal 4 MB; banner ikut menentukan cepat-lambatnya beranda dimuat |
+| Komposisi | Tulisan hero ada di **sisi kiri** — pilih foto yang kirinya lapang, taruh objek utama di kanan |
+| Pemotongan | Tepi atas & bawah bisa terpotong di layar tertentu |
+
+Banner **opsional**. Tanpa unggahan, beranda memakai tampilan bawaan: latar hijau tua
+dengan pola topografi. Tombol **"Kembalikan ke latar warna"** di halaman pengaturan
+menghapus banner dan mengembalikan tampilan itu kapan saja.
+
+Karena foto punya tingkat terang berbeda-beda, tersedia pengatur **kepekatan lapisan
+gelap** (25–85%) yang menjaga tulisan putih tetap terbaca di atas banner apa pun.
 
 ### Baris baru pada kolom teks
 
